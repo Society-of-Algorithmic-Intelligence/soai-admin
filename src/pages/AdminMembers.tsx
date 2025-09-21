@@ -7,6 +7,7 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '.
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table';
 import { Pagination, PaginationContent, PaginationItem, PaginationPrevious, PaginationNext } from '../components/ui/pagination';
 import { Badge } from '../components/ui/badge';
+import { Pencil } from 'lucide-react';
 
 function useMembers() {
   const [items, setItems] = useState<Member[]>([]);
@@ -170,14 +171,15 @@ export default function AdminMembers() {
                   <TableCell>
                     <Badge variant={m.status === 'ACTIVE' ? 'secondary' : m.status === 'INACTIVE' ? 'outline' : 'destructive'}>{m.status}</Badge>
                   </TableCell>
-                  <TableCell>{m.role}</TableCell>
-                  <TableCell>{new Date(m.created_at).toLocaleString()}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex gap-2 justify-end">
-                      <Button variant="outline" size="sm" onClick={() => setExpandedId(expandedId === m.id ? null : m.id)}>
-                        {expandedId === m.id ? 'Hide' : 'Details'}
-                      </Button>
-                      <Button variant="outline" size="sm"
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <span>{m.role}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-1"
+                        aria-label="Edit role"
+                        title="Edit role"
                         onClick={async () => {
                           const role = prompt('Set role for this member (e.g., member, admin, editor):', m.role);
                           if (role && role !== m.role) {
@@ -185,8 +187,17 @@ export default function AdminMembers() {
                             s.reload();
                           }
                         }}
-                      >Role…</Button>
-                      {null}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                  <TableCell>{new Date(m.created_at).toLocaleString()}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="outline" size="sm" onClick={() => setExpandedId(expandedId === m.id ? null : m.id)}>
+                        {expandedId === m.id ? 'Hide' : 'Details'}
+                      </Button>
                       <Button variant="destructive" size="sm"
                         onClick={async () => {
                           if (!confirm(`Remove member ${m.member_id}? This cannot be undone.`)) return;
