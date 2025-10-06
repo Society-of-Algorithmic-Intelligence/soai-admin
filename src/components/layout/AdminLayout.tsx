@@ -106,7 +106,6 @@ function Crumbs() {
       default: return 'Members';
     }
   };
-  const paths = segments.map((_, i) => '/' + segments.slice(0, i + 1).join('/'));
   return (
     <Breadcrumb>
       <BreadcrumbList>
