@@ -1,5 +1,6 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Users, Newspaper, CalendarDays } from 'lucide-react'
+import { Fragment, useEffect } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Users, Newspaper, CalendarDays } from 'lucide-react'
 import {
   SidebarProvider,
   Sidebar,
@@ -41,16 +42,24 @@ function NavItem({ to, icon: Icon, label, end = false }: { to: string; icon: any
 }
 
 export default function AdminLayout() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem('soai_admin_token');
+      if (!token) navigate('/login', { replace: true });
+    } catch {
+      navigate('/login', { replace: true });
+    }
+  }, [navigate]);
   return (
-    <SidebarProvider>
+    <SidebarProvider style={{ "--sidebar-width": "12rem" } as any}>
       <Sidebar collapsible="offcanvas">
-        <SidebarHeader>
+        <SidebarHeader className="h-14 p-0">
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:!p-1.5">
-                <a href="#">
-                  <LayoutDashboard className="!size-4" />
-                  <span className="text-base font-semibold">SOAI Admin</span>
+              <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:!p-0 w-full h-full">
+                <a href="#" className="flex w-full h-full items-center justify-center">
+                  <img src={import.meta.env.BASE_URL + 'SoAI_logo.svg'} alt="SoAI" className="w-[60%] h-auto max-h-full object-contain" />
                 </a>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -61,7 +70,6 @@ export default function AdminLayout() {
             <SidebarGroupLabel>Main</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                <NavItem to="/" icon={LayoutDashboard} label="Home" end />
                 <NavItem to="/members" icon={Users} label="Members" />
                 <NavItem to="/news" icon={Newspaper} label="News" />
                 <NavItem to="/events" icon={CalendarDays} label="Events" />
@@ -95,29 +103,35 @@ function Crumbs() {
       case 'members': return 'Members';
       case 'news': return 'News';
       case 'events': return 'Events';
-      default: return 'Home';
+      default: return 'Members';
     }
   };
   const paths = segments.map((_, i) => '/' + segments.slice(0, i + 1).join('/'));
   return (
     <Breadcrumb>
       <BreadcrumbList>
-        {segments.length === 0 ? (
+        {segments.length === 0 && (
           <BreadcrumbItem>
-            <BreadcrumbPage>Home</BreadcrumbPage>
+            <BreadcrumbPage>Members</BreadcrumbPage>
           </BreadcrumbItem>
-        ) : (
+        )}
+        {segments.length === 1 && (
+          <BreadcrumbItem>
+            <BreadcrumbPage>{titleFor(segments[0])}</BreadcrumbPage>
+          </BreadcrumbItem>
+        )}
+        {segments.length > 1 && (
           <>
             <BreadcrumbItem className="hidden md:block">
-              <BreadcrumbLink href="/">Home</BreadcrumbLink>
+              <BreadcrumbLink href="/members">Members</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator className="hidden md:block" />
-            {segments.map((seg, idx) => {
-              const isLast = idx === segments.length - 1;
+            {segments.slice(1).map((seg, idx) => {
+              const isLast = idx === segments.slice(1).length - 1;
+              const href = '/' + ['members', ...segments.slice(1).slice(0, idx + 1)].join('/');
               const label = titleFor(seg);
-              const href = paths[idx];
               return (
-                <>
+                <Fragment key={href}>
                   {!isLast ? (
                     <BreadcrumbItem className="hidden md:block">
                       <BreadcrumbLink href={href}>{label}</BreadcrumbLink>
@@ -128,7 +142,7 @@ function Crumbs() {
                     </BreadcrumbItem>
                   )}
                   {!isLast && <BreadcrumbSeparator className="hidden md:block" />}
-                </>
+                </Fragment>
               );
             })}
           </>

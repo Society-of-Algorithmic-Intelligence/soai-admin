@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, Fragment } from 'react';
 import { fetchMembers, deleteMember, updateMember } from '../lib/api';
 import type { Member } from '../types';
 import { Button } from '../components/ui/button';
@@ -39,6 +39,10 @@ function useMembers() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, pageSize, search, status, plan]);
 
+  function updateItemLocal(id: string, changes: Partial<Member>) {
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...changes } : it)));
+  }
+
   return {
     items,
     total,
@@ -55,12 +59,13 @@ function useMembers() {
     loading,
     error,
     reload: load,
+    updateItemLocal,
   };
 }
 
 function exportCsv(rows: Member[]) {
   const headers = [
-    'member_id','email','first_name','last_name','status','plan','role','personal_webpage','phone','phone_country_code','country','country_code','affiliation','title','renew_date','created_at'
+    'member_id','email','first_name','last_name','status','plan','role','is_admin','personal_webpage','phone','phone_country_code','country','country_code','affiliation','title','renew_date','created_at'
   ];
   const lines = [headers.join(',')].concat(rows.map((m) => headers.map((h) => {
     const v = (m as any)[h] ?? '';
@@ -85,16 +90,16 @@ export default function AdminMembers() {
   const ALL = '__all__';
 
   return (
-    <div className="max-w-7xl mx-auto p-4">
+    <div className="max-w-7xl">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Members</h1>
-        <div className="flex gap-2">
+        <div className="flex">
           <Button variant="outline" onClick={() => s.reload()}>Refresh</Button>
           <Button variant="outline" onClick={() => exportCsv(s.items)}>Export CSV</Button>
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-4">
         <Input
           placeholder="Search by id, name, email, country, affiliation"
           className="col-span-2"
@@ -121,7 +126,7 @@ export default function AdminMembers() {
         </Select>
       </div>
 
-      <div className="mt-4 border rounded">
+      <div className="border rounded">
         <Table>
           <TableHeader>
             <TableRow>
@@ -132,20 +137,21 @@ export default function AdminMembers() {
               <TableHead>Country</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Role</TableHead>
+              <TableHead>Admin</TableHead>
               <TableHead>Created</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {s.loading && (
-              <TableRow><TableCell colSpan={9}>Loading…</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10}>Loading…</TableCell></TableRow>
             )}
             {!s.loading && s.items.length === 0 && (
-              <TableRow><TableCell colSpan={9}>No members found</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10}>No members found</TableCell></TableRow>
             )}
             {!s.loading && s.items.map((m) => (
-              <>
-                <TableRow key={m.id}>
+              <Fragment key={m.id}>
+                <TableRow>
                   <TableCell className="font-mono">{m.member_id}</TableCell>
                   <TableCell>{m.first_name} {m.middle_name ? m.middle_name + ' ' : ''}{m.last_name}</TableCell>
                   <TableCell>
@@ -154,7 +160,7 @@ export default function AdminMembers() {
                       onValueChange={async (v) => {
                         if (v !== m.plan) {
                           await updateMember(m.id, { plan: v });
-                          s.reload();
+                          s.updateItemLocal(m.id, { plan: v });
                         }
                       }}
                     >
@@ -172,19 +178,19 @@ export default function AdminMembers() {
                     <Badge variant={m.status === 'ACTIVE' ? 'secondary' : m.status === 'INACTIVE' ? 'outline' : 'destructive'}>{m.status}</Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center">
                       <span>{m.role}</span>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 w-6 p-1"
+                        className="h-6 w-6"
                         aria-label="Edit role"
                         title="Edit role"
                         onClick={async () => {
                           const role = prompt('Set role for this member (e.g., member, admin, editor):', m.role);
                           if (role && role !== m.role) {
                             await updateMember(m.id, { role });
-                            s.reload();
+                            s.updateItemLocal(m.id, { role });
                           }
                         }}
                       >
@@ -192,9 +198,30 @@ export default function AdminMembers() {
                       </Button>
                     </div>
                   </TableCell>
+                  <TableCell>
+                    <Select
+                      value={m.is_admin ? '1' : '0'}
+                      onValueChange={async (v) => {
+                        const next = v === '1';
+                        if (next !== Boolean(m.is_admin)) {
+                          // send role as well for compatibility with older backends
+                          await updateMember(m.id, { is_admin: next, role: m.role });
+                          s.updateItemLocal(m.id, { is_admin: next ? 1 : 0 });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-[8rem] h-8">
+                        <SelectValue placeholder="Set admin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">No</SelectItem>
+                        <SelectItem value="1">Yes</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
                   <TableCell>{new Date(m.created_at).toLocaleString()}</TableCell>
                   <TableCell className="text-right">
-                    <div className="flex gap-2 justify-end">
+                    <div className="flex justify-end">
                       <Button variant="outline" size="sm" onClick={() => setExpandedId(expandedId === m.id ? null : m.id)}>
                         {expandedId === m.id ? 'Hide' : 'Details'}
                       </Button>
@@ -209,9 +236,9 @@ export default function AdminMembers() {
                   </TableCell>
                 </TableRow>
                 {expandedId === m.id && (
-                  <TableRow>
-                    <TableCell colSpan={9}>
-                      <div className="p-4 bg-muted/20 rounded text-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <TableRow key={m.id + '-details'}>
+                    <TableCell colSpan={10}>
+                      <div className="bg-muted/20 rounded text-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                         <div><span className="text-muted-foreground">ID:</span> <span className="font-mono">{m.id}</span></div>
                         <div><span className="text-muted-foreground">Member ID:</span> <span className="font-mono">{m.member_id}</span></div>
                         <div><span className="text-muted-foreground">Email:</span> {m.email}</div>
@@ -225,13 +252,14 @@ export default function AdminMembers() {
                         <div><span className="text-muted-foreground">Status:</span> {m.status}</div>
                         <div><span className="text-muted-foreground">Plan:</span> {m.plan}</div>
                         <div><span className="text-muted-foreground">Role:</span> {m.role}</div>
+                        <div><span className="text-muted-foreground">Admin:</span> {m.is_admin ? 'Yes' : 'No'}</div>
                         <div><span className="text-muted-foreground">Renew date:</span> {m.renew_date || ''}</div>
                         <div><span className="text-muted-foreground">Created at:</span> {new Date(m.created_at).toLocaleString()}</div>
                       </div>
                     </TableCell>
                   </TableRow>
                 )}
-              </>
+              </Fragment>
             ))}
           </TableBody>
         </Table>
@@ -242,8 +270,8 @@ export default function AdminMembers() {
         const canPrev = s.page > 1;
         const canNext = s.page < pages;
         return (
-          <div className="mt-3">
-            <div className="text-sm text-muted-foreground mb-2">Page {s.page} of {pages} · {s.total} total</div>
+          <div>
+            <div className="text-sm text-muted-foreground">Page {s.page} of {pages} · {s.total} total</div>
             <Pagination>
               <PaginationContent>
                 <PaginationItem>

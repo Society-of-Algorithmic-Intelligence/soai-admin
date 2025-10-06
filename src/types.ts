@@ -8,6 +8,7 @@ export interface Member {
   status: string; // ACTIVE | INACTIVE | BANNED
   plan: string; // permanent | monthly | yearly | ...
   role: string; // member | admin | ...
+  is_admin: 0 | 1; // boolean-like from D1 (0=false, 1=true)
   personal_webpage?: string | null;
   phone?: string | null;
   phone_country_code?: string | null;
