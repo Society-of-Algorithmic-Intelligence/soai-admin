@@ -7,6 +7,16 @@ import tailwindcss from "@tailwindcss/vite"
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: '/soai-admin/',
+  server: {
+    proxy: {
+      // Route API calls to the backend during local development
+      '/api': {
+        target: process.env.VITE_PROXY_API_TARGET,
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

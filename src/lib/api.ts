@@ -31,7 +31,17 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
     },
   });
   if (!res.ok) {
-    throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    if (res.status === 401) {
+      // Clear invalid/expired session and redirect to login
+      setAuthToken(null);
+      try {
+        const base = import.meta.env.BASE_URL || '/';
+        // Using hard redirect to ensure app state resets
+        window.location.assign(base.replace(/\/$/, '') + '/login');
+      } catch {}
+    }
+    const text = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status} ${res.statusText}${text ? `: ${text}` : ''}`);
   }
   return (await res.json()) as T;
 }
