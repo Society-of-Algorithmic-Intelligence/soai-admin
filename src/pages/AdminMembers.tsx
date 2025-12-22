@@ -7,7 +7,6 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '.
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table';
 import { Pagination, PaginationContent, PaginationItem, PaginationPrevious, PaginationNext } from '../components/ui/pagination';
 import { Badge } from '../components/ui/badge';
-import { Pencil } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 import { unMemberCountries } from '../data/countries';
 
@@ -106,6 +105,10 @@ export default function AdminMembers() {
   const planOptions = useMemo(() => ['Regular Member','Permanent Member','Developing Countries','Student Member'], []);
   const ALL = '__all__';
   const countryOptions = useMemo(() => [...unMemberCountries, 'Other'], []);
+  const roleOptions = useMemo(
+    () => ['member', 'Executive_Committee', 'Advisory_Board', 'Country/Region_Leaders'],
+    []
+  );
 
   async function onCreateMember(e: React.FormEvent) {
     e.preventDefault();
@@ -125,7 +128,7 @@ export default function AdminMembers() {
         affiliation: addAffiliation.trim(),
         title: addTitle.trim(),
         plan: addPlan,
-        role: addRole.trim() || 'member',
+        role: addRole,
         is_admin: addIsAdmin,
         personal_webpage: addPersonalWebpage.trim() || undefined,
         send_welcome: addSendWelcome,
@@ -258,11 +261,16 @@ export default function AdminMembers() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Role</label>
-                <Input
-                  value={addRole}
-                  onChange={(e) => setAddRole(e.target.value)}
-                  placeholder="member, advisor, admin, ..."
-                />
+                <Select value={addRole} onValueChange={setAddRole}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roleOptions.map((r) => (
+                      <SelectItem key={r} value={r}>{r}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -376,25 +384,24 @@ export default function AdminMembers() {
                     <Badge variant={m.status === 'ACTIVE' ? 'secondary' : m.status === 'INACTIVE' ? 'outline' : 'destructive'}>{m.status}</Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center">
-                      <span>{m.role}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6"
-                        aria-label="Edit role"
-                        title="Edit role"
-                        onClick={async () => {
-                          const role = prompt('Set role for this member (e.g., member, admin, editor):', m.role);
-                          if (role && role !== m.role) {
-                            await updateMember(m.id, { role });
-                            s.updateItemLocal(m.id, { role });
-                          }
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <Select
+                      value={roleOptions.includes(m.role) ? m.role : 'member'}
+                      onValueChange={async (v) => {
+                        if (v !== m.role) {
+                          await updateMember(m.id, { role: v });
+                          s.updateItemLocal(m.id, { role: v });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-[12rem] h-8">
+                        <SelectValue placeholder="Set role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roleOptions.map((r) => (
+                          <SelectItem key={r} value={r}>{r}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell>
                     <Select

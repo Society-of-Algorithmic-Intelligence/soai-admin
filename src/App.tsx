@@ -5,6 +5,7 @@ import AdminMembers from './pages/AdminMembers'
 import AdminNews from './pages/AdminNews'
 import AdminEvents from './pages/AdminEvents'
 import Login from './pages/Login'
+import AdminBroadcast from './pages/AdminBroadcast'
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route path="members" element={<AdminMembers />} />
           <Route path="news" element={<AdminNews />} />
           <Route path="events" element={<AdminEvents />} />
+          <Route path="broadcast" element={<AdminBroadcast />} />
         </Route>
       </Routes>
     </BrowserRouter>
