@@ -59,6 +59,29 @@ export async function fetchMembers(
   return await http<PagedResult<Member>>(`/api/members?${qs}`);
 }
 
+export async function createMember(payload: {
+  email: string;
+  first_name: string;
+  last_name: string;
+  middle_name?: string;
+  country: string;
+  affiliation: string;
+  title: string;
+  plan: string;
+  role?: string;
+  is_admin?: boolean;
+  personal_webpage?: string;
+  send_welcome?: boolean;
+}): Promise<{ ok: boolean; member_id: string; existed?: boolean }> {
+  return await http<{ ok: boolean; member_id: string; existed?: boolean }>(
+    '/api/members',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
 export async function deleteMember(id: string): Promise<{ ok: boolean }> {
   return await http<{ ok: boolean }>(`/api/members?id=${encodeURIComponent(id)}`, {
     method: 'DELETE',

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, Fragment } from 'react';
-import { fetchMembers, deleteMember, updateMember } from '../lib/api';
+import { fetchMembers, deleteMember, updateMember, createMember } from '../lib/api';
 import type { Member } from '../types';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -8,6 +8,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '.
 import { Pagination, PaginationContent, PaginationItem, PaginationPrevious, PaginationNext } from '../components/ui/pagination';
 import { Badge } from '../components/ui/badge';
 import { Pencil } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 
 function useMembers() {
   const [items, setItems] = useState<Member[]>([]);
@@ -84,20 +85,211 @@ function exportCsv(rows: Member[]) {
 export default function AdminMembers() {
   const s = useMembers();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [addEmail, setAddEmail] = useState('');
+  const [addFirstName, setAddFirstName] = useState('');
+  const [addMiddleName, setAddMiddleName] = useState('');
+  const [addLastName, setAddLastName] = useState('');
+  const [addCountry, setAddCountry] = useState('');
+  const [addAffiliation, setAddAffiliation] = useState('');
+  const [addTitle, setAddTitle] = useState('Prof.');
+  const [addPlan, setAddPlan] = useState('Regular Member');
+  const [addRole, setAddRole] = useState('member');
+  const [addIsAdmin, setAddIsAdmin] = useState(false);
+  const [addPersonalWebpage, setAddPersonalWebpage] = useState('');
+  const [addSendWelcome, setAddSendWelcome] = useState(false);
+  const [addSubmitting, setAddSubmitting] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   const statusOptions = useMemo(() => ['ACTIVE','INACTIVE','BANNED'], []);
   const planOptions = useMemo(() => ['Regular Member','Permanent Member','Developing Countries','Student Member'], []);
   const ALL = '__all__';
 
+  async function onCreateMember(e: React.FormEvent) {
+    e.preventDefault();
+    setAddError(null);
+    if (!addEmail.trim() || !addFirstName.trim() || !addLastName.trim() || !addCountry.trim() || !addAffiliation.trim() || !addTitle.trim()) {
+      setAddError('Email, first/last name, country, affiliation, and title are required.');
+      return;
+    }
+    setAddSubmitting(true);
+    try {
+      await createMember({
+        email: addEmail.trim(),
+        first_name: addFirstName.trim(),
+        last_name: addLastName.trim(),
+        middle_name: addMiddleName.trim() || undefined,
+        country: addCountry.trim(),
+        affiliation: addAffiliation.trim(),
+        title: addTitle.trim(),
+        plan: addPlan,
+        role: addRole.trim() || 'member',
+        is_admin: addIsAdmin,
+        personal_webpage: addPersonalWebpage.trim() || undefined,
+        send_welcome: addSendWelcome,
+      });
+      setAdding(false);
+      setAddEmail('');
+      setAddFirstName('');
+      setAddMiddleName('');
+      setAddLastName('');
+      setAddCountry('');
+      setAddAffiliation('');
+      setAddTitle('Prof.');
+      setAddPlan('Regular Member');
+      setAddRole('member');
+      setAddIsAdmin(false);
+      setAddPersonalWebpage('');
+      setAddSendWelcome(false);
+      s.reload();
+    } catch (err: any) {
+      setAddError(err?.message || 'Failed to create member.');
+    } finally {
+      setAddSubmitting(false);
+    }
+  }
+
   return (
     <div className="max-w-7xl">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Members</h1>
-        <div className="flex">
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setAdding((v) => !v)}>
+            {adding ? 'Cancel Add' : 'Add Member'}
+          </Button>
           <Button variant="outline" onClick={() => s.reload()}>Refresh</Button>
           <Button variant="outline" onClick={() => exportCsv(s.items)}>Export CSV</Button>
         </div>
       </div>
+
+      {adding && (
+        <Card className="mt-4 mb-4">
+          <CardHeader>
+            <CardTitle>Add Member Manually</CardTitle>
+            <CardDescription>Use this when you need to add advisors or members yourself.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={onCreateMember} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Email *</label>
+                <Input
+                  type="email"
+                  value={addEmail}
+                  onChange={(e) => setAddEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Title *</label>
+                <Input
+                  value={addTitle}
+                  onChange={(e) => setAddTitle(e.target.value)}
+                  placeholder="Prof., Dr., Mr., Ms., ..."
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">First name *</label>
+                <Input
+                  value={addFirstName}
+                  onChange={(e) => setAddFirstName(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Middle name</label>
+                <Input
+                  value={addMiddleName}
+                  onChange={(e) => setAddMiddleName(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Last name *</label>
+                <Input
+                  value={addLastName}
+                  onChange={(e) => setAddLastName(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Country *</label>
+                <Input
+                  value={addCountry}
+                  onChange={(e) => setAddCountry(e.target.value)}
+                  placeholder="e.g. Singapore"
+                  required
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-1">Affiliation *</label>
+                <Input
+                  value={addAffiliation}
+                  onChange={(e) => setAddAffiliation(e.target.value)}
+                  placeholder="e.g. University / Company"
+                  required
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-1">Personal webpage</label>
+                <Input
+                  value={addPersonalWebpage}
+                  onChange={(e) => setAddPersonalWebpage(e.target.value)}
+                  placeholder="https://example.com (optional)"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Plan *</label>
+                <Select value={addPlan} onValueChange={setAddPlan}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {planOptions.map((p) => (
+                      <SelectItem key={p} value={p}>{p}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Role</label>
+                <Input
+                  value={addRole}
+                  onChange={(e) => setAddRole(e.target.value)}
+                  placeholder="member, advisor, admin, ..."
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="add-is-admin"
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={addIsAdmin}
+                  onChange={(e) => setAddIsAdmin(e.target.checked)}
+                />
+                <label htmlFor="add-is-admin" className="text-sm">Grant admin access</label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="add-send-welcome"
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={addSendWelcome}
+                  onChange={(e) => setAddSendWelcome(e.target.checked)}
+                />
+                <label htmlFor="add-send-welcome" className="text-sm">Send welcome email</label>
+              </div>
+              {addError && (
+                <div className="md:col-span-2 text-sm text-red-600">{addError}</div>
+              )}
+              <div className="md:col-span-2 flex justify-end">
+                <Button type="submit" disabled={addSubmitting}>
+                  {addSubmitting ? 'Creating…' : 'Create Member'}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-4">
         <Input
