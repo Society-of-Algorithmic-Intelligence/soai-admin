@@ -9,6 +9,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationPrevious, Pagi
 import { Badge } from '../components/ui/badge';
 import { Pencil } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
+import { unMemberCountries } from '../data/countries';
 
 function useMembers() {
   const [items, setItems] = useState<Member[]>([]);
@@ -104,6 +105,7 @@ export default function AdminMembers() {
   const statusOptions = useMemo(() => ['ACTIVE','INACTIVE','BANNED'], []);
   const planOptions = useMemo(() => ['Regular Member','Permanent Member','Developing Countries','Student Member'], []);
   const ALL = '__all__';
+  const countryOptions = useMemo(() => [...unMemberCountries, 'Other'], []);
 
   async function onCreateMember(e: React.FormEvent) {
     e.preventDefault();
@@ -213,12 +215,16 @@ export default function AdminMembers() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Country/Region *</label>
-                <Input
-                  value={addCountry}
-                  onChange={(e) => setAddCountry(e.target.value)}
-                  placeholder="e.g. Singapore"
-                  required
-                />
+                <Select value={addCountry} onValueChange={setAddCountry}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select country/region" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {countryOptions.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium mb-1">Affiliation *</label>
