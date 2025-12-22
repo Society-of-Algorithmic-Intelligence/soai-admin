@@ -109,7 +109,7 @@ export default function AdminMembers() {
     e.preventDefault();
     setAddError(null);
     if (!addEmail.trim() || !addFirstName.trim() || !addLastName.trim() || !addCountry.trim() || !addAffiliation.trim() || !addTitle.trim()) {
-      setAddError('Email, first/last name, country, affiliation, and title are required.');
+      setAddError('Email, first/last name, country/region, affiliation, and title are required.');
       return;
     }
     setAddSubmitting(true);
@@ -212,7 +212,7 @@ export default function AdminMembers() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Country *</label>
+                <label className="block text-sm font-medium mb-1">Country/Region *</label>
                 <Input
                   value={addCountry}
                   onChange={(e) => setAddCountry(e.target.value)}
@@ -293,7 +293,7 @@ export default function AdminMembers() {
 
       <div className="grid grid-cols-1 sm:grid-cols-4">
         <Input
-          placeholder="Search by id, name, email, country, affiliation"
+          placeholder="Search by id, name, email, country/region, affiliation"
           className="col-span-2"
           value={s.search}
           onChange={(e) => { s.setPage(1); s.setSearch(e.target.value); }}
@@ -326,7 +326,7 @@ export default function AdminMembers() {
               <TableHead>Name</TableHead>
               <TableHead>Plan</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>Country</TableHead>
+              <TableHead>Country/Region</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Admin</TableHead>
