@@ -112,18 +112,4 @@ export async function verifyLoginCode(email: string, code: string): Promise<{ to
   });
 }
 
-export async function broadcastEmail(payload: {
-  subject: string;
-  html: string;
-  preview?: boolean;
-  plan?: string;
-  role?: string;
-  country?: string;
-  list_only?: boolean;
-}): Promise<{ ok: boolean; sent?: number; previewTo?: string; emails?: string[]; count?: number }> {
-  return await http<{ ok: boolean; sent?: number; previewTo?: string; emails?: string[]; count?: number }>('/api/broadcast', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-}
 
