@@ -35,4 +35,35 @@ export interface PagedResult<T> {
   pageSize: number;
 }
 
+export interface EventRegistrationEventSummary {
+  event: string;
+  total: number;
+  paid: number;
+  last_paid_at: string | null;
+}
+
+export interface EventRegistrationParticipant {
+  id: string;
+  event: string;
+  stripe_session_id: string;
+  stripe_payment_intent_id?: string | null;
+  email?: string | null;
+  full_name?: string | null;
+  first_name?: string | null;
+  middle_name?: string | null;
+  last_name?: string | null;
+  title?: string | null;
+  affiliation?: string | null;
+  country?: string | null;
+  personal_webpage?: string | null;
+  membership_status?: string | null; // for ISI: stores the ISI member id
+  tier?: string | null;
+  member?: string | null;
+  amount_total?: number | null;
+  currency?: string | null;
+  payment_status?: string | null;
+  paid_at?: string | null;
+  created_at: string;
+}
+
 

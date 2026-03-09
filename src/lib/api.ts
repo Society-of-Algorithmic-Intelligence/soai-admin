@@ -1,4 +1,10 @@
-import type { Member, MembersQuery, PagedResult } from '../types';
+import type {
+  Member,
+  MembersQuery,
+  PagedResult,
+  EventRegistrationEventSummary,
+  EventRegistrationParticipant,
+} from '../types';
 
 const DEFAULT_API_BASE = import.meta.env.VITE_API_BASE || '';
 
@@ -110,6 +116,19 @@ export async function verifyLoginCode(email: string, code: string): Promise<{ to
     method: 'POST',
     body: JSON.stringify({ email, code }),
   });
+}
+
+export async function fetchEventRegistrationEvents(): Promise<{ items: EventRegistrationEventSummary[] }> {
+  return await http<{ items: EventRegistrationEventSummary[] }>(
+    '/api/admin/event-registrations/events'
+  );
+}
+
+export async function fetchEventRegistrationParticipants(event: string): Promise<{ items: EventRegistrationParticipant[] }> {
+  const qs = new URLSearchParams({ event }).toString();
+  return await http<{ items: EventRegistrationParticipant[] }>(
+    `/api/admin/event-registrations/participants?${qs}`
+  );
 }
 
 
