@@ -27,6 +27,16 @@ function membershipLabel(v: string | null | undefined) {
   return `ISI (${s})`;
 }
 
+function handsOnTutorialLabel(v: string | null | undefined) {
+  const s = String(v || '').trim();
+  if (!s) return '';
+  if (s === 'quantum') return 'Quantum Computing';
+  if (s === 'ai_coding') return 'AI for Coding';
+  if (s === 'ai_trading') return 'AI Algorithmic Trading';
+  if (s === 'na') return 'NA';
+  return s;
+}
+
 function exportParticipantsCsv(eventName: string, rows: EventRegistrationParticipant[]) {
   const headers = [
     'event',
@@ -37,6 +47,8 @@ function exportParticipantsCsv(eventName: string, rows: EventRegistrationPartici
     'country',
     'membership_status',
     'tier',
+    'hands_on_tutorial_preference',
+    'hands_on_tutorial_label',
     'amount_total',
     'currency',
     'payment_status',
@@ -45,11 +57,20 @@ function exportParticipantsCsv(eventName: string, rows: EventRegistrationPartici
     'stripe_payment_intent_id',
     'created_at',
   ];
-  const lines = [headers.join(',')].concat(rows.map((r) => headers.map((h) => {
-    const v = (r as any)[h] ?? '';
-    const s = String(v).replaceAll('"', '""');
-    return `"${s}"`;
-  }).join(',')));
+  const lines = [headers.join(',')].concat(
+    rows.map((r) =>
+      headers
+        .map((h) => {
+          const v =
+            h === 'hands_on_tutorial_label'
+              ? handsOnTutorialLabel(r.hands_on_tutorial_preference)
+              : ((r as EventRegistrationParticipant & Record<string, unknown>)[h] ?? '');
+          const s = String(v).replaceAll('"', '""');
+          return `"${s}"`;
+        })
+        .join(','),
+    ),
+  );
   const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -215,6 +236,7 @@ export default function AdminEvents() {
                   <TableHead>Country/Region</TableHead>
                   <TableHead>Membership / ISI ID</TableHead>
                   <TableHead>Tier</TableHead>
+                  <TableHead>Hands-on tutorial</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Paid at</TableHead>
                   <TableHead className="text-right">Stripe session</TableHead>
@@ -223,12 +245,12 @@ export default function AdminEvents() {
               <TableBody>
                 {participantsLoading && (
                   <TableRow>
-                    <TableCell colSpan={9}>Loading…</TableCell>
+                    <TableCell colSpan={10}>Loading…</TableCell>
                   </TableRow>
                 )}
                 {!participantsLoading && participants.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={9}>No participants found.</TableCell>
+                    <TableCell colSpan={10}>No participants found.</TableCell>
                   </TableRow>
                 )}
                 {!participantsLoading && participants.map((p) => (
@@ -239,6 +261,7 @@ export default function AdminEvents() {
                     <TableCell>{p.country || ''}</TableCell>
                     <TableCell className="font-mono">{membershipLabel(p.membership_status)}</TableCell>
                     <TableCell>{p.tier || ''}</TableCell>
+                    <TableCell>{handsOnTutorialLabel(p.hands_on_tutorial_preference)}</TableCell>
                     <TableCell>{fmtMoney(p.amount_total, p.currency)}</TableCell>
                     <TableCell>{fmtDate(p.paid_at)}</TableCell>
                     <TableCell className="text-right font-mono">{p.stripe_session_id}</TableCell>
