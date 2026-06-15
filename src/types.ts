@@ -40,6 +40,7 @@ export interface EventRegistrationEventSummary {
   total: number;
   paid: number;
   last_paid_at: string | null;
+  source?: 'stripe' | 'hackathon';
 }
 
 export interface EventRegistrationParticipant {
@@ -68,4 +69,39 @@ export interface EventRegistrationParticipant {
   created_at: string;
 }
 
+export interface HackathonTeamMember {
+  name: string;
+  affiliation: string;
+  email: string;
+}
+
+export interface HackathonRegistration {
+  id: string;
+  event: string;
+  email: string;
+  full_name: string;
+  first_name: string;
+  middle_name?: string | null;
+  last_name: string;
+  title: string;
+  affiliation: string;
+  country: string;
+  personal_webpage?: string | null;
+  membership_status: string;
+  soai_member_id?: string | null;
+  registration_type: 'individual' | 'team';
+  team_name?: string | null;
+  team_size?: number | null;
+  team_non_member_count?: number | null;
+  team_members: HackathonTeamMember[];
+  amount_total: number;
+  currency: string;
+  registration_status: string;
+  payment_status: string;
+  stripe_session_id?: string | null;
+  stripe_payment_intent_id?: string | null;
+  paid_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
 

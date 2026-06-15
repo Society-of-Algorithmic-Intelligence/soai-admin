@@ -4,6 +4,7 @@ import type {
   PagedResult,
   EventRegistrationEventSummary,
   EventRegistrationParticipant,
+  HackathonRegistration,
 } from '../types';
 
 const DEFAULT_API_BASE = import.meta.env.VITE_API_BASE || '';
@@ -15,14 +16,18 @@ export function setAuthToken(t: string | null) {
   try {
     if (t) localStorage.setItem('soai_admin_token', t);
     else localStorage.removeItem('soai_admin_token');
-  } catch {}
+  } catch {
+    // Storage can be unavailable in restricted browser contexts.
+  }
 }
 
 function getAuthToken(): string | null {
   if (token) return token;
   try {
     return localStorage.getItem('soai_admin_token');
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
@@ -44,7 +49,9 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
         const base = import.meta.env.BASE_URL || '/';
         // Using hard redirect to ensure app state resets
         window.location.assign(base.replace(/\/$/, '') + '/login');
-      } catch {}
+      } catch {
+        // The HTTP error below still surfaces if navigation is unavailable.
+      }
     }
     const text = await res.text().catch(() => '');
     throw new Error(`HTTP ${res.status} ${res.statusText}${text ? `: ${text}` : ''}`);
@@ -124,11 +131,15 @@ export async function fetchEventRegistrationEvents(): Promise<{ items: EventRegi
   );
 }
 
-export async function fetchEventRegistrationParticipants(event: string): Promise<{ items: EventRegistrationParticipant[] }> {
+export async function fetchEventRegistrationParticipants(event: string): Promise<
+  | { source: 'stripe'; items: EventRegistrationParticipant[] }
+  | { source: 'hackathon'; items: HackathonRegistration[] }
+> {
   const qs = new URLSearchParams({ event }).toString();
-  return await http<{ items: EventRegistrationParticipant[] }>(
+  return await http<
+    | { source: 'stripe'; items: EventRegistrationParticipant[] }
+    | { source: 'hackathon'; items: HackathonRegistration[] }
+  >(
     `/api/admin/event-registrations/participants?${qs}`
   );
 }
-
-

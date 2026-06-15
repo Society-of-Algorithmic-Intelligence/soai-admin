@@ -1,43 +1,77 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Button } from '../components/ui/button';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table';
-import { fetchEventRegistrationEvents, fetchEventRegistrationParticipants } from '../lib/api';
-import type { EventRegistrationEventSummary, EventRegistrationParticipant } from '../types';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '../components/ui/table';
+import {
+  fetchEventRegistrationEvents,
+  fetchEventRegistrationParticipants,
+} from '../lib/api';
+import type {
+  EventRegistrationEventSummary,
+  EventRegistrationParticipant,
+  HackathonRegistration,
+} from '../types';
 
-function fmtDate(v: string | null | undefined) {
-  if (!v) return '';
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return String(v);
-  return d.toLocaleString();
+function fmtDate(value: string | null | undefined) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString();
 }
 
 function fmtMoney(amountTotal: number | null | undefined, currency: string | null | undefined) {
   if (amountTotal == null) return '';
-  const c = (currency || 'SGD').toUpperCase();
-  return `${c} ${(amountTotal / 100).toFixed(2)}`;
+  return `${(currency || 'SGD').toUpperCase()} ${(amountTotal / 100).toFixed(2)}`;
 }
 
-function membershipLabel(v: string | null | undefined) {
-  const s = String(v || '').trim();
-  if (!s) return '';
-  if (s === 'existing') return 'SoAI member (existing)';
-  if (s === 'join') return 'SoAI member (joined at checkout)';
-  if (s === 'nonmember') return 'Non-member';
-  // For ISI: we store the ISI member id directly in membership_status
-  return `ISI (${s})`;
+function membershipLabel(value: string | null | undefined) {
+  const status = String(value || '').trim();
+  if (!status) return '';
+  if (status === 'existing') return 'Existing SoAI member';
+  if (status === 'join') return 'Joined SoAI';
+  if (status === 'nonmember') return 'Non-member';
+  return status;
 }
 
-function handsOnTutorialLabel(v: string | null | undefined) {
-  const s = String(v || '').trim();
-  if (!s) return '';
-  if (s === 'quantum') return 'Quantum Computing';
-  if (s === 'ai_coding') return 'AI for Coding';
-  if (s === 'ai_trading') return 'AI Algorithmic Trading';
-  if (s === 'na') return 'NA';
-  return s;
+function handsOnTutorialLabel(value: string | null | undefined) {
+  const preference = String(value || '').trim();
+  if (!preference) return '';
+  if (preference === 'quantum') return 'Quantum Computing';
+  if (preference === 'ai_coding') return 'AI for Coding';
+  if (preference === 'ai_trading') return 'AI Algorithmic Trading';
+  if (preference === 'na') return 'NA';
+  return preference;
 }
 
-function exportParticipantsCsv(eventName: string, rows: EventRegistrationParticipant[]) {
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function downloadCsv(filename: string, headers: string[], rows: Array<Record<string, unknown>>) {
+  const lines = [
+    headers.join(','),
+    ...rows.map((row) =>
+      headers
+        .map((header) => `"${String(row[header] ?? '').replaceAll('"', '""')}"`)
+        .join(','),
+    ),
+  ];
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportStripeParticipants(eventName: string, rows: EventRegistrationParticipant[]) {
   const headers = [
     'event',
     'full_name',
@@ -48,7 +82,6 @@ function exportParticipantsCsv(eventName: string, rows: EventRegistrationPartici
     'membership_status',
     'tier',
     'hands_on_tutorial_preference',
-    'hands_on_tutorial_label',
     'amount_total',
     'currency',
     'payment_status',
@@ -57,47 +90,68 @@ function exportParticipantsCsv(eventName: string, rows: EventRegistrationPartici
     'stripe_payment_intent_id',
     'created_at',
   ];
-  const lines = [headers.join(',')].concat(
-    rows.map((r) =>
-      headers
-        .map((h) => {
-          const v =
-            h === 'hands_on_tutorial_label'
-              ? handsOnTutorialLabel(r.hands_on_tutorial_preference)
-              : ((r as EventRegistrationParticipant & Record<string, unknown>)[h] ?? '');
-          const s = String(v).replaceAll('"', '""');
-          return `"${s}"`;
-        })
-        .join(','),
-    ),
+  downloadCsv(
+    `${eventName || 'event'}-participants.csv`,
+    headers,
+    rows.map((row) => ({ ...row })),
   );
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${eventName || 'event'}-participants.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+}
+
+function exportHackathonRegistrations(eventName: string, rows: HackathonRegistration[]) {
+  const headers = [
+    'event',
+    'full_name',
+    'email',
+    'title',
+    'affiliation',
+    'country',
+    'membership_status',
+    'soai_member_id',
+    'registration_type',
+    'team_name',
+    'team_size',
+    'team_non_member_count',
+    'team_members',
+    'amount_total',
+    'currency',
+    'registration_status',
+    'payment_status',
+    'paid_at',
+    'stripe_session_id',
+    'created_at',
+  ];
+  downloadCsv(
+    `${eventName || 'hackathon'}-registrations.csv`,
+    headers,
+    rows.map((row) => ({
+      ...row,
+      team_members: row.team_members
+        .map((member) => `${member.name} <${member.email}> (${member.affiliation})`)
+        .join('; '),
+    })),
+  );
 }
 
 export default function AdminEvents() {
   const [events, setEvents] = useState<EventRegistrationEventSummary[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventsError, setEventsError] = useState<string | null>(null);
-
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
+  const [participantSource, setParticipantSource] = useState<'stripe' | 'hackathon'>('stripe');
   const [participants, setParticipants] = useState<EventRegistrationParticipant[]>([]);
+  const [hackathonRegistrations, setHackathonRegistrations] = useState<HackathonRegistration[]>([]);
   const [participantsLoading, setParticipantsLoading] = useState(false);
   const [participantsError, setParticipantsError] = useState<string | null>(null);
+  const [expandedRegistrationId, setExpandedRegistrationId] = useState<string | null>(null);
 
   async function loadEvents() {
     setEventsLoading(true);
     setEventsError(null);
     try {
-      const r = await fetchEventRegistrationEvents();
-      setEvents(r.items || []);
-    } catch (e: any) {
-      setEventsError(e?.message || 'Failed to load events.');
+      const response = await fetchEventRegistrationEvents();
+      setEvents(response.items || []);
+    } catch (error) {
+      setEventsError(errorMessage(error, 'Failed to load events.'));
     } finally {
       setEventsLoading(false);
     }
@@ -106,56 +160,75 @@ export default function AdminEvents() {
   async function loadParticipants(eventName: string) {
     setParticipantsLoading(true);
     setParticipantsError(null);
+    setExpandedRegistrationId(null);
     try {
-      const r = await fetchEventRegistrationParticipants(eventName);
-      setParticipants(r.items || []);
-    } catch (e: any) {
-      setParticipantsError(e?.message || 'Failed to load participants.');
+      const response = await fetchEventRegistrationParticipants(eventName);
+      setParticipantSource(response.source);
+      if (response.source === 'hackathon') {
+        setHackathonRegistrations(response.items);
+        setParticipants([]);
+      } else {
+        setParticipants(response.items);
+        setHackathonRegistrations([]);
+      }
+    } catch (error) {
+      setParticipantsError(errorMessage(error, 'Failed to load participants.'));
     } finally {
       setParticipantsLoading(false);
     }
   }
 
   useEffect(() => {
-    loadEvents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    void loadEvents();
   }, []);
 
-  const selectedSummary = useMemo(() => {
-    if (!selectedEvent) return null;
-    return events.find((e) => e.event === selectedEvent) || null;
-  }, [events, selectedEvent]);
+  const selectedSummary = useMemo(
+    () => events.find((event) => event.event === selectedEvent) || null,
+    [events, selectedEvent],
+  );
+
+  const visibleRegistrationCount =
+    participantSource === 'hackathon' ? hackathonRegistrations.length : participants.length;
 
   return (
-    <div className="max-w-7xl">
+    <div className="max-w-7xl p-4 md:p-6">
       <div className="grid grid-cols-3 items-center gap-2">
         <div />
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold">Events</h1>
-        </div>
-        <div className="flex gap-2 justify-end">
+        <h1 className="text-center text-2xl font-semibold">Events</h1>
+        <div className="flex justify-end gap-2">
           {selectedEvent && (
             <Button
               variant="outline"
               onClick={() => {
                 setSelectedEvent(null);
                 setParticipants([]);
+                setHackathonRegistrations([]);
                 setParticipantsError(null);
               }}
             >
               Back to events
             </Button>
           )}
-          <Button variant="outline" onClick={() => loadEvents()} disabled={eventsLoading}>
+          <Button
+            variant="outline"
+            onClick={() => (selectedEvent ? loadParticipants(selectedEvent) : loadEvents())}
+            disabled={eventsLoading || participantsLoading}
+          >
             Refresh
           </Button>
           {selectedEvent && (
             <Button
               variant="outline"
-              onClick={() => exportParticipantsCsv(selectedEvent, participants)}
-              disabled={participantsLoading || participants.length === 0}
+              disabled={participantsLoading || visibleRegistrationCount === 0}
+              onClick={() => {
+                if (participantSource === 'hackathon') {
+                  exportHackathonRegistrations(selectedEvent, hackathonRegistrations);
+                } else {
+                  exportStripeParticipants(selectedEvent, participants);
+                }
+              }}
             >
-              Export participants CSV
+              Export CSV
             </Button>
           )}
         </div>
@@ -163,50 +236,54 @@ export default function AdminEvents() {
 
       {!selectedEvent && (
         <div className="mt-4">
-          {eventsError && <div className="text-sm text-red-600 mb-3">{eventsError}</div>}
-          <div className="rounded-lg border bg-white overflow-hidden">
+          {eventsError && <div className="mb-3 text-sm text-red-600">{eventsError}</div>}
+          <div className="overflow-hidden rounded-lg border bg-white">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Event</TableHead>
-                  <TableHead>Paid</TableHead>
+                  <TableHead>Source</TableHead>
+                  <TableHead>Paid / confirmed</TableHead>
                   <TableHead>Total</TableHead>
-                  <TableHead>Last paid</TableHead>
+                  <TableHead>Last activity</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {eventsLoading && (
                   <TableRow>
-                    <TableCell colSpan={5}>Loading…</TableCell>
+                    <TableCell colSpan={6}>Loading...</TableCell>
                   </TableRow>
                 )}
                 {!eventsLoading && events.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5}>No events with registrations yet.</TableCell>
+                    <TableCell colSpan={6}>No events with registrations yet.</TableCell>
                   </TableRow>
                 )}
-                {!eventsLoading && events.map((e) => (
-                  <TableRow key={e.event} className="cursor-pointer">
-                    <TableCell className="font-medium">{e.event}</TableCell>
-                    <TableCell>{e.paid}</TableCell>
-                    <TableCell>{e.total}</TableCell>
-                    <TableCell>{fmtDate(e.last_paid_at)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={async () => {
-                          setSelectedEvent(e.event);
-                          setParticipants([]);
-                          await loadParticipants(e.event);
-                        }}
-                      >
-                        View participants
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {!eventsLoading &&
+                  events.map((event) => (
+                    <TableRow key={event.event}>
+                      <TableCell className="font-medium">{event.event}</TableCell>
+                      <TableCell>
+                        {event.source === 'hackathon' ? 'Hackathon registration form' : 'Stripe'}
+                      </TableCell>
+                      <TableCell>{event.paid}</TableCell>
+                      <TableCell>{event.total}</TableCell>
+                      <TableCell>{fmtDate(event.last_paid_at)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={async () => {
+                            setSelectedEvent(event.event);
+                            await loadParticipants(event.event);
+                          }}
+                        >
+                          View registrations
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
               </TableBody>
             </Table>
           </div>
@@ -219,60 +296,214 @@ export default function AdminEvents() {
             <div className="text-lg font-semibold">{selectedEvent}</div>
             {selectedSummary && (
               <div className="text-sm text-muted-foreground">
-                Paid: {selectedSummary.paid} / Total: {selectedSummary.total}
+                Paid / confirmed: {selectedSummary.paid} / Total: {selectedSummary.total}
               </div>
             )}
           </div>
 
-          {participantsError && <div className="text-sm text-red-600 mb-3">{participantsError}</div>}
+          {participantsError && <div className="mb-3 text-sm text-red-600">{participantsError}</div>}
 
-          <div className="rounded-lg border bg-white overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Affiliation</TableHead>
-                  <TableHead>Country/Region</TableHead>
-                  <TableHead>Membership / ISI ID</TableHead>
-                  <TableHead>Tier</TableHead>
-                  <TableHead>Hands-on tutorial</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Paid at</TableHead>
-                  <TableHead className="text-right">Stripe session</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {participantsLoading && (
+          {participantSource === 'hackathon' ? (
+            <div className="overflow-x-auto rounded-lg border bg-white">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={10}>Loading…</TableCell>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Registration</TableHead>
+                    <TableHead>Affiliation</TableHead>
+                    <TableHead>Country/Region</TableHead>
+                    <TableHead>Membership</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Registered</TableHead>
+                    <TableHead className="text-right">Details</TableHead>
                   </TableRow>
-                )}
-                {!participantsLoading && participants.length === 0 && (
+                </TableHeader>
+                <TableBody>
+                  {participantsLoading && (
+                    <TableRow>
+                      <TableCell colSpan={10}>Loading...</TableCell>
+                    </TableRow>
+                  )}
+                  {!participantsLoading && hackathonRegistrations.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={10}>No hackathon registrations found.</TableCell>
+                    </TableRow>
+                  )}
+                  {!participantsLoading &&
+                    hackathonRegistrations.map((registration) => (
+                      <Fragment key={registration.id}>
+                        <TableRow>
+                          <TableCell className="font-medium">{registration.full_name}</TableCell>
+                          <TableCell>{registration.email}</TableCell>
+                          <TableCell>
+                            {registration.registration_type === 'team'
+                              ? `Team: ${registration.team_name || ''}`
+                              : 'Individual'}
+                          </TableCell>
+                          <TableCell>{registration.affiliation}</TableCell>
+                          <TableCell>{registration.country}</TableCell>
+                          <TableCell>
+                            <div>{membershipLabel(registration.membership_status)}</div>
+                            {registration.soai_member_id && (
+                              <div className="font-mono text-xs">{registration.soai_member_id}</div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div>{registration.registration_status}</div>
+                            <div className="text-xs text-muted-foreground">
+                              Payment: {registration.payment_status}
+                            </div>
+                          </TableCell>
+                          <TableCell>{fmtMoney(registration.amount_total, registration.currency)}</TableCell>
+                          <TableCell>{fmtDate(registration.created_at)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                setExpandedRegistrationId((current) =>
+                                  current === registration.id ? null : registration.id,
+                                )
+                              }
+                            >
+                              {expandedRegistrationId === registration.id ? 'Hide' : 'Details'}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        {expandedRegistrationId === registration.id && (
+                          <TableRow>
+                            <TableCell colSpan={10}>
+                              <div className="grid gap-3 rounded-lg bg-muted/20 p-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                                <div>
+                                  <span className="text-muted-foreground">Title:</span>{' '}
+                                  {registration.title}
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Personal webpage:</span>{' '}
+                                  {registration.personal_webpage ? (
+                                    <a
+                                      href={registration.personal_webpage}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="underline"
+                                    >
+                                      {registration.personal_webpage}
+                                    </a>
+                                  ) : (
+                                    ''
+                                  )}
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Paid at:</span>{' '}
+                                  {fmtDate(registration.paid_at)}
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Stripe session:</span>{' '}
+                                  <span className="font-mono">{registration.stripe_session_id || ''}</span>
+                                </div>
+                                {registration.registration_type === 'team' && (
+                                  <>
+                                    <div>
+                                      <span className="text-muted-foreground">Team size:</span>{' '}
+                                      {registration.team_size}
+                                    </div>
+                                    <div>
+                                      <span className="text-muted-foreground">
+                                        Non-member teammates:
+                                      </span>{' '}
+                                      {registration.team_non_member_count}
+                                    </div>
+                                    <div className="md:col-span-2 xl:col-span-3">
+                                      <div className="mb-2 font-medium">Additional team members</div>
+                                      <div className="overflow-hidden rounded border bg-white">
+                                        <Table>
+                                          <TableHeader>
+                                            <TableRow>
+                                              <TableHead>Name</TableHead>
+                                              <TableHead>Email</TableHead>
+                                              <TableHead>Affiliation</TableHead>
+                                            </TableRow>
+                                          </TableHeader>
+                                          <TableBody>
+                                            {registration.team_members.map((member) => (
+                                              <TableRow key={`${registration.id}-${member.email}`}>
+                                                <TableCell>{member.name}</TableCell>
+                                                <TableCell>{member.email}</TableCell>
+                                                <TableCell>{member.affiliation}</TableCell>
+                                              </TableRow>
+                                            ))}
+                                          </TableBody>
+                                        </Table>
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </Fragment>
+                    ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border bg-white">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={10}>No participants found.</TableCell>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Affiliation</TableHead>
+                    <TableHead>Country/Region</TableHead>
+                    <TableHead>Membership / ISI ID</TableHead>
+                    <TableHead>Tier</TableHead>
+                    <TableHead>Hands-on tutorial</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Paid at</TableHead>
+                    <TableHead className="text-right">Stripe session</TableHead>
                   </TableRow>
-                )}
-                {!participantsLoading && participants.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.full_name || ''}</TableCell>
-                    <TableCell>{p.email || ''}</TableCell>
-                    <TableCell>{p.affiliation || ''}</TableCell>
-                    <TableCell>{p.country || ''}</TableCell>
-                    <TableCell className="font-mono">{membershipLabel(p.membership_status)}</TableCell>
-                    <TableCell>{p.tier || ''}</TableCell>
-                    <TableCell>{handsOnTutorialLabel(p.hands_on_tutorial_preference)}</TableCell>
-                    <TableCell>{fmtMoney(p.amount_total, p.currency)}</TableCell>
-                    <TableCell>{fmtDate(p.paid_at)}</TableCell>
-                    <TableCell className="text-right font-mono">{p.stripe_session_id}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {participantsLoading && (
+                    <TableRow>
+                      <TableCell colSpan={10}>Loading...</TableCell>
+                    </TableRow>
+                  )}
+                  {!participantsLoading && participants.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={10}>No participants found.</TableCell>
+                    </TableRow>
+                  )}
+                  {!participantsLoading &&
+                    participants.map((participant) => (
+                      <TableRow key={participant.id}>
+                        <TableCell className="font-medium">{participant.full_name || ''}</TableCell>
+                        <TableCell>{participant.email || ''}</TableCell>
+                        <TableCell>{participant.affiliation || ''}</TableCell>
+                        <TableCell>{participant.country || ''}</TableCell>
+                        <TableCell className="font-mono">
+                          {membershipLabel(participant.membership_status)}
+                        </TableCell>
+                        <TableCell>{participant.tier || ''}</TableCell>
+                        <TableCell>
+                          {handsOnTutorialLabel(participant.hands_on_tutorial_preference)}
+                        </TableCell>
+                        <TableCell>{fmtMoney(participant.amount_total, participant.currency)}</TableCell>
+                        <TableCell>{fmtDate(participant.paid_at)}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {participant.stripe_session_id}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
-
