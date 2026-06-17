@@ -1,6 +1,6 @@
 import { Fragment, useEffect } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Users, Newspaper, CalendarDays } from 'lucide-react'
+import { Users, Newspaper, CalendarDays, BedDouble } from 'lucide-react'
 import {
   SidebarProvider,
   Sidebar,
@@ -73,6 +73,7 @@ export default function AdminLayout() {
                 <NavItem to="/members" icon={Users} label="Members" />
                 <NavItem to="/news" icon={Newspaper} label="News" />
                 <NavItem to="/events" icon={CalendarDays} label="Events" />
+                <NavItem to="/hotel-bookings" icon={BedDouble} label="Hotel Bookings" />
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -103,6 +104,7 @@ function Crumbs() {
       case 'members': return 'Members';
       case 'news': return 'News';
       case 'events': return 'Events';
+      case 'hotel-bookings': return 'Hotel Bookings';
       default: return 'Members';
     }
   };

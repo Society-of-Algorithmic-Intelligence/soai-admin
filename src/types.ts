@@ -75,6 +75,28 @@ export interface HackathonTeamMember {
   email: string;
 }
 
+export interface HotelBooking {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  room_type: string;
+  check_in: string;
+  check_out: string;
+  nights: number;
+  arrival_flight_details?: string | null;
+  departure_flight_details?: string | null;
+  remarks?: string | null;
+  amount_total?: number | null;
+  currency?: string | null;
+  payment_status: string; // pending | paid
+  stripe_session_id?: string | null;
+  stripe_payment_intent_id?: string | null;
+  paid_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface HackathonRegistration {
   id: string;
   event: string;

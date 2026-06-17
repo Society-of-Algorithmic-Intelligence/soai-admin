@@ -5,6 +5,7 @@ import type {
   EventRegistrationEventSummary,
   EventRegistrationParticipant,
   HackathonRegistration,
+  HotelBooking,
 } from '../types';
 
 const DEFAULT_API_BASE = import.meta.env.VITE_API_BASE || '';
@@ -142,4 +143,8 @@ export async function fetchEventRegistrationParticipants(event: string): Promise
   >(
     `/api/admin/event-registrations/participants?${qs}`
   );
+}
+
+export async function fetchHotelBookings(): Promise<{ items: HotelBooking[] }> {
+  return await http<{ items: HotelBooking[] }>('/api/admin/hotel-bookings');
 }

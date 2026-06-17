@@ -4,6 +4,7 @@ import AdminLayout from './components/layout/AdminLayout'
 import AdminMembers from './pages/AdminMembers'
 import AdminNews from './pages/AdminNews'
 import AdminEvents from './pages/AdminEvents'
+import AdminHotelBookings from './pages/AdminHotelBookings'
 import Login from './pages/Login'
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
           <Route path="members" element={<AdminMembers />} />
           <Route path="news" element={<AdminNews />} />
           <Route path="events" element={<AdminEvents />} />
+          <Route path="hotel-bookings" element={<AdminHotelBookings />} />
         </Route>
       </Routes>
     </BrowserRouter>
