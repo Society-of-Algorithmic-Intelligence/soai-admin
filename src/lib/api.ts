@@ -146,3 +146,14 @@ export async function fetchEventRegistrationParticipants(event: string): Promise
     `/api/admin/event-registrations/participants?${qs}`
   );
 }
+
+export async function deleteEventRegistrationParticipant(
+  source: 'stripe' | 'hackathon' | 'hotel',
+  id: string,
+): Promise<{ ok: boolean }> {
+  const qs = new URLSearchParams({ source, id }).toString();
+  return await http<{ ok: boolean }>(
+    `/api/admin/event-registrations/participants?${qs}`,
+    { method: 'DELETE' },
+  );
+}

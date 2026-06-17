@@ -11,6 +11,7 @@ import {
 import {
   fetchEventRegistrationEvents,
   fetchEventRegistrationParticipants,
+  deleteEventRegistrationParticipant,
 } from '../lib/api';
 import type {
   EventRegistrationEventSummary,
@@ -208,6 +209,23 @@ export default function AdminEvents() {
     }
   }
 
+  async function handleDelete(source: 'stripe' | 'hackathon' | 'hotel', id: string, label: string) {
+    if (!confirm(`Delete registration for ${label}? This cannot be undone.`)) return;
+    try {
+      await deleteEventRegistrationParticipant(source, id);
+      if (source === 'hackathon') {
+        setHackathonRegistrations((rows) => rows.filter((row) => row.id !== id));
+      } else if (source === 'hotel') {
+        setHotelBookings((rows) => rows.filter((row) => row.id !== id));
+      } else {
+        setParticipants((rows) => rows.filter((row) => row.id !== id));
+      }
+      void loadEvents();
+    } catch (error) {
+      setParticipantsError(errorMessage(error, 'Failed to delete registration.'));
+    }
+  }
+
   useEffect(() => {
     void loadEvents();
   }, []);
@@ -357,18 +375,19 @@ export default function AdminEvents() {
                     <TableHead>Nights</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Booked</TableHead>
+                    <TableHead>Booked</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {participantsLoading && (
                     <TableRow>
-                      <TableCell colSpan={9}>Loading...</TableCell>
+                      <TableCell colSpan={10}>Loading...</TableCell>
                     </TableRow>
                   )}
                   {!participantsLoading && hotelBookings.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={9}>No hotel bookings yet.</TableCell>
+                      <TableCell colSpan={10}>No hotel bookings yet.</TableCell>
                     </TableRow>
                   )}
                   {!participantsLoading &&
@@ -384,7 +403,16 @@ export default function AdminEvents() {
                         <TableCell>{booking.nights}</TableCell>
                         <TableCell>{fmtMoney(booking.amount_total, booking.currency)}</TableCell>
                         <TableCell>{booking.payment_status}</TableCell>
-                        <TableCell className="text-right">{fmtDate(booking.created_at)}</TableCell>
+                        <TableCell>{fmtDate(booking.created_at)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDelete('hotel', booking.id, booking.email || 'this guest')}
+                          >
+                            Delete
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                 </TableBody>
@@ -446,17 +474,28 @@ export default function AdminEvents() {
                           <TableCell>{fmtMoney(registration.amount_total, registration.currency)}</TableCell>
                           <TableCell>{fmtDate(registration.created_at)}</TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                setExpandedRegistrationId((current) =>
-                                  current === registration.id ? null : registration.id,
-                                )
-                              }
-                            >
-                              {expandedRegistrationId === registration.id ? 'Hide' : 'Details'}
-                            </Button>
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  setExpandedRegistrationId((current) =>
+                                    current === registration.id ? null : registration.id,
+                                  )
+                                }
+                              >
+                                {expandedRegistrationId === registration.id ? 'Hide' : 'Details'}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() =>
+                                  handleDelete('hackathon', registration.id, registration.full_name || registration.email)
+                                }
+                              >
+                                Delete
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                         {expandedRegistrationId === registration.id && (
@@ -550,18 +589,19 @@ export default function AdminEvents() {
                     <TableHead>Hands-on tutorial</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Paid at</TableHead>
-                    <TableHead className="text-right">Stripe session</TableHead>
+                    <TableHead>Stripe session</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {participantsLoading && (
                     <TableRow>
-                      <TableCell colSpan={10}>Loading...</TableCell>
+                      <TableCell colSpan={11}>Loading...</TableCell>
                     </TableRow>
                   )}
                   {!participantsLoading && participants.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={10}>No participants found.</TableCell>
+                      <TableCell colSpan={11}>No participants found.</TableCell>
                     </TableRow>
                   )}
                   {!participantsLoading &&
@@ -580,8 +620,19 @@ export default function AdminEvents() {
                         </TableCell>
                         <TableCell>{fmtMoney(participant.amount_total, participant.currency)}</TableCell>
                         <TableCell>{fmtDate(participant.paid_at)}</TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="font-mono">
                           {participant.stripe_session_id}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() =>
+                              handleDelete('stripe', participant.id, participant.full_name || participant.email || 'this participant')
+                            }
+                          >
+                            Delete
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
