@@ -16,6 +16,7 @@ import type {
   EventRegistrationEventSummary,
   EventRegistrationParticipant,
   HackathonRegistration,
+  HotelBooking,
 } from '../types';
 
 function fmtDate(value: string | null | undefined) {
@@ -97,6 +98,28 @@ function exportStripeParticipants(eventName: string, rows: EventRegistrationPart
   );
 }
 
+function exportHotelBookings(rows: HotelBooking[]) {
+  const headers = [
+    'email',
+    'first_name',
+    'last_name',
+    'room_type',
+    'check_in',
+    'check_out',
+    'nights',
+    'arrival_flight_details',
+    'departure_flight_details',
+    'remarks',
+    'amount_total',
+    'currency',
+    'payment_status',
+    'paid_at',
+    'stripe_session_id',
+    'created_at',
+  ];
+  downloadCsv('hotel-bookings.csv', headers, rows.map((row) => ({ ...row })));
+}
+
 function exportHackathonRegistrations(eventName: string, rows: HackathonRegistration[]) {
   const headers = [
     'event',
@@ -137,9 +160,10 @@ export default function AdminEvents() {
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventsError, setEventsError] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
-  const [participantSource, setParticipantSource] = useState<'stripe' | 'hackathon'>('stripe');
+  const [participantSource, setParticipantSource] = useState<'stripe' | 'hackathon' | 'hotel'>('stripe');
   const [participants, setParticipants] = useState<EventRegistrationParticipant[]>([]);
   const [hackathonRegistrations, setHackathonRegistrations] = useState<HackathonRegistration[]>([]);
+  const [hotelBookings, setHotelBookings] = useState<HotelBooking[]>([]);
   const [participantsLoading, setParticipantsLoading] = useState(false);
   const [participantsError, setParticipantsError] = useState<string | null>(null);
   const [expandedRegistrationId, setExpandedRegistrationId] = useState<string | null>(null);
@@ -167,9 +191,15 @@ export default function AdminEvents() {
       if (response.source === 'hackathon') {
         setHackathonRegistrations(response.items);
         setParticipants([]);
+        setHotelBookings([]);
+      } else if (response.source === 'hotel') {
+        setHotelBookings(response.items);
+        setParticipants([]);
+        setHackathonRegistrations([]);
       } else {
         setParticipants(response.items);
         setHackathonRegistrations([]);
+        setHotelBookings([]);
       }
     } catch (error) {
       setParticipantsError(errorMessage(error, 'Failed to load participants.'));
@@ -188,7 +218,11 @@ export default function AdminEvents() {
   );
 
   const visibleRegistrationCount =
-    participantSource === 'hackathon' ? hackathonRegistrations.length : participants.length;
+    participantSource === 'hackathon'
+      ? hackathonRegistrations.length
+      : participantSource === 'hotel'
+        ? hotelBookings.length
+        : participants.length;
 
   return (
     <div className="max-w-7xl p-4 md:p-6">
@@ -203,6 +237,7 @@ export default function AdminEvents() {
                 setSelectedEvent(null);
                 setParticipants([]);
                 setHackathonRegistrations([]);
+                setHotelBookings([]);
                 setParticipantsError(null);
               }}
             >
@@ -223,6 +258,8 @@ export default function AdminEvents() {
               onClick={() => {
                 if (participantSource === 'hackathon') {
                   exportHackathonRegistrations(selectedEvent, hackathonRegistrations);
+                } else if (participantSource === 'hotel') {
+                  exportHotelBookings(hotelBookings);
                 } else {
                   exportStripeParticipants(selectedEvent, participants);
                 }
@@ -265,7 +302,11 @@ export default function AdminEvents() {
                     <TableRow key={event.event}>
                       <TableCell className="font-medium">{event.event}</TableCell>
                       <TableCell>
-                        {event.source === 'hackathon' ? 'Hackathon registration form' : 'Stripe'}
+                        {event.source === 'hackathon'
+                          ? 'Hackathon registration form'
+                          : event.source === 'hotel'
+                            ? 'Hotel booking'
+                            : 'Stripe'}
                       </TableCell>
                       <TableCell>{event.paid}</TableCell>
                       <TableCell>{event.total}</TableCell>
@@ -303,7 +344,53 @@ export default function AdminEvents() {
 
           {participantsError && <div className="mb-3 text-sm text-red-600">{participantsError}</div>}
 
-          {participantSource === 'hackathon' ? (
+          {participantSource === 'hotel' ? (
+            <div className="overflow-x-auto rounded-lg border bg-white">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Room Type</TableHead>
+                    <TableHead>Check-in</TableHead>
+                    <TableHead>Check-out</TableHead>
+                    <TableHead>Nights</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Booked</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {participantsLoading && (
+                    <TableRow>
+                      <TableCell colSpan={9}>Loading...</TableCell>
+                    </TableRow>
+                  )}
+                  {!participantsLoading && hotelBookings.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={9}>No hotel bookings yet.</TableCell>
+                    </TableRow>
+                  )}
+                  {!participantsLoading &&
+                    hotelBookings.map((booking) => (
+                      <TableRow key={booking.id}>
+                        <TableCell className="font-medium">
+                          {booking.first_name} {booking.last_name}
+                        </TableCell>
+                        <TableCell>{booking.email}</TableCell>
+                        <TableCell>{booking.room_type}</TableCell>
+                        <TableCell>{booking.check_in}</TableCell>
+                        <TableCell>{booking.check_out}</TableCell>
+                        <TableCell>{booking.nights}</TableCell>
+                        <TableCell>{fmtMoney(booking.amount_total, booking.currency)}</TableCell>
+                        <TableCell>{booking.payment_status}</TableCell>
+                        <TableCell className="text-right">{fmtDate(booking.created_at)}</TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : participantSource === 'hackathon' ? (
             <div className="overflow-x-auto rounded-lg border bg-white">
               <Table>
                 <TableHeader>

@@ -40,7 +40,7 @@ export interface EventRegistrationEventSummary {
   total: number;
   paid: number;
   last_paid_at: string | null;
-  source?: 'stripe' | 'hackathon';
+  source?: 'stripe' | 'hackathon' | 'hotel';
 }
 
 export interface EventRegistrationParticipant {

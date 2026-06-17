@@ -135,16 +135,14 @@ export async function fetchEventRegistrationEvents(): Promise<{ items: EventRegi
 export async function fetchEventRegistrationParticipants(event: string): Promise<
   | { source: 'stripe'; items: EventRegistrationParticipant[] }
   | { source: 'hackathon'; items: HackathonRegistration[] }
+  | { source: 'hotel'; items: HotelBooking[] }
 > {
   const qs = new URLSearchParams({ event }).toString();
   return await http<
     | { source: 'stripe'; items: EventRegistrationParticipant[] }
     | { source: 'hackathon'; items: HackathonRegistration[] }
+    | { source: 'hotel'; items: HotelBooking[] }
   >(
     `/api/admin/event-registrations/participants?${qs}`
   );
-}
-
-export async function fetchHotelBookings(): Promise<{ items: HotelBooking[] }> {
-  return await http<{ items: HotelBooking[] }>('/api/admin/hotel-bookings');
 }
