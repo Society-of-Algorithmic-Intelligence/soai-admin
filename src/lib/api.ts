@@ -157,3 +157,17 @@ export async function deleteEventRegistrationParticipant(
     { method: 'DELETE' },
   );
 }
+
+export async function syncHotelBookingsToExternalSheet(): Promise<{
+  ok: boolean;
+  count: number;
+  status?: number;
+  message?: string;
+}> {
+  return await http<{
+    ok: boolean;
+    count: number;
+    status?: number;
+    message?: string;
+  }>('/api/admin/hotel-bookings/sync', { method: 'POST' });
+}

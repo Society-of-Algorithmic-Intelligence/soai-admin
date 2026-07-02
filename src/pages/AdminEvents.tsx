@@ -12,6 +12,7 @@ import {
   fetchEventRegistrationEvents,
   fetchEventRegistrationParticipants,
   deleteEventRegistrationParticipant,
+  syncHotelBookingsToExternalSheet,
 } from '../lib/api';
 import type {
   EventRegistrationEventSummary,
@@ -168,6 +169,8 @@ export default function AdminEvents() {
   const [participantsLoading, setParticipantsLoading] = useState(false);
   const [participantsError, setParticipantsError] = useState<string | null>(null);
   const [expandedRegistrationId, setExpandedRegistrationId] = useState<string | null>(null);
+  const [hotelSyncing, setHotelSyncing] = useState(false);
+  const [hotelSyncMessage, setHotelSyncMessage] = useState<string | null>(null);
 
   async function loadEvents() {
     setEventsLoading(true);
@@ -188,6 +191,7 @@ export default function AdminEvents() {
     setExpandedRegistrationId(null);
     try {
       const response = await fetchEventRegistrationParticipants(eventName);
+      setHotelSyncMessage(null);
       setParticipantSource(response.source);
       if (response.source === 'hackathon') {
         setHackathonRegistrations(response.items);
@@ -226,6 +230,20 @@ export default function AdminEvents() {
     }
   }
 
+  async function handleHotelSheetSync() {
+    setHotelSyncing(true);
+    setHotelSyncMessage(null);
+    setParticipantsError(null);
+    try {
+      const result = await syncHotelBookingsToExternalSheet();
+      setHotelSyncMessage(`Synced ${result.count} hotel booking${result.count === 1 ? '' : 's'} to the external sheet.`);
+    } catch (error) {
+      setParticipantsError(errorMessage(error, 'Failed to sync hotel bookings to the external sheet.'));
+    } finally {
+      setHotelSyncing(false);
+    }
+  }
+
   useEffect(() => {
     void loadEvents();
   }, []);
@@ -257,6 +275,7 @@ export default function AdminEvents() {
                 setHackathonRegistrations([]);
                 setHotelBookings([]);
                 setParticipantsError(null);
+                setHotelSyncMessage(null);
               }}
             >
               Back to events
@@ -284,6 +303,15 @@ export default function AdminEvents() {
               }}
             >
               Export CSV
+            </Button>
+          )}
+          {selectedEvent && participantSource === 'hotel' && (
+            <Button
+              variant="outline"
+              disabled={hotelSyncing || participantsLoading}
+              onClick={handleHotelSheetSync}
+            >
+              {hotelSyncing ? 'Syncing...' : 'Sync to hotel sheet'}
             </Button>
           )}
         </div>
@@ -361,6 +389,7 @@ export default function AdminEvents() {
           </div>
 
           {participantsError && <div className="mb-3 text-sm text-red-600">{participantsError}</div>}
+          {hotelSyncMessage && <div className="mb-3 text-sm text-green-700">{hotelSyncMessage}</div>}
 
           {participantSource === 'hotel' ? (
             <div className="overflow-x-auto rounded-lg border bg-white">
