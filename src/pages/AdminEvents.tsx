@@ -12,6 +12,7 @@ import {
   fetchEventRegistrationEvents,
   fetchEventRegistrationParticipants,
   deleteEventRegistrationParticipant,
+  resendEventRegistrationEmail,
   syncHotelBookingsToExternalSheet,
 } from '../lib/api';
 import type {
@@ -171,6 +172,8 @@ export default function AdminEvents() {
   const [expandedRegistrationId, setExpandedRegistrationId] = useState<string | null>(null);
   const [hotelSyncing, setHotelSyncing] = useState(false);
   const [hotelSyncMessage, setHotelSyncMessage] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [resendResults, setResendResults] = useState<Record<string, { ok: boolean; msg: string }>>({});
 
   async function loadEvents() {
     setEventsLoading(true);
@@ -189,6 +192,7 @@ export default function AdminEvents() {
     setParticipantsLoading(true);
     setParticipantsError(null);
     setExpandedRegistrationId(null);
+    setResendResults({});
     try {
       const response = await fetchEventRegistrationParticipants(eventName);
       setHotelSyncMessage(null);
@@ -241,6 +245,19 @@ export default function AdminEvents() {
       setParticipantsError(errorMessage(error, 'Failed to sync hotel bookings to the external sheet.'));
     } finally {
       setHotelSyncing(false);
+    }
+  }
+
+  async function handleResendEmail(id: string) {
+    setResendingId(id);
+    setResendResults((prev) => ({ ...prev, [id]: { ok: false, msg: '' } }));
+    try {
+      const result = await resendEventRegistrationEmail(id);
+      setResendResults((prev) => ({ ...prev, [id]: { ok: true, msg: `Sent to ${result.email}` } }));
+    } catch (error) {
+      setResendResults((prev) => ({ ...prev, [id]: { ok: false, msg: errorMessage(error, 'Failed to resend.') } }));
+    } finally {
+      setResendingId(null);
     }
   }
 
@@ -653,15 +670,32 @@ export default function AdminEvents() {
                           {participant.stripe_session_id}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() =>
-                              handleDelete('stripe', participant.id, participant.full_name || participant.email || 'this participant')
-                            }
-                          >
-                            Delete
-                          </Button>
+                          <div className="flex flex-col items-end gap-1">
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={resendingId === participant.id}
+                                onClick={() => handleResendEmail(participant.id)}
+                              >
+                                {resendingId === participant.id ? 'Sending…' : 'Resend Email'}
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() =>
+                                  handleDelete('stripe', participant.id, participant.full_name || participant.email || 'this participant')
+                                }
+                              >
+                                Delete
+                              </Button>
+                            </div>
+                            {resendResults[participant.id]?.msg && (
+                              <span className={`text-xs ${resendResults[participant.id].ok ? 'text-green-600' : 'text-red-600'}`}>
+                                {resendResults[participant.id].msg}
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
