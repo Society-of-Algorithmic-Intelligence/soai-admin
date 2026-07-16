@@ -1,6 +1,6 @@
 import { Fragment, useEffect } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Users, Newspaper, CalendarDays } from 'lucide-react'
+import { Users, Newspaper, CalendarDays, LogOut } from 'lucide-react'
 import {
   SidebarProvider,
   Sidebar,
@@ -8,7 +8,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarGroupContent,
   SidebarMenu,
   SidebarMenuItem,
@@ -25,13 +24,21 @@ import {
   BreadcrumbSeparator,
 } from '../../components/ui/breadcrumb'
 import { Separator } from '../../components/ui/separator'
+import { cn } from '../../lib/utils'
 
 function NavItem({ to, icon: Icon, label, end = false }: { to: string; icon: any; label: string; end?: boolean }) {
   const location = useLocation();
   const active = end ? location.pathname === to : location.pathname === to || location.pathname.startsWith(to + '/');
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={active}>
+      <SidebarMenuButton
+        asChild
+        isActive={active}
+        className={cn(
+          'border-l-2 transition-colors',
+          active ? 'border-white/70' : 'border-transparent',
+        )}
+      >
         <NavLink to={to} end={end} className="flex items-center gap-2">
           <Icon className="size-4" />
           <span>{label}</span>
@@ -43,6 +50,7 @@ function NavItem({ to, icon: Icon, label, end = false }: { to: string; icon: any
 
 export default function AdminLayout() {
   const navigate = useNavigate();
+
   useEffect(() => {
     try {
       const token = localStorage.getItem('soai_admin_token');
@@ -51,45 +59,74 @@ export default function AdminLayout() {
       navigate('/login', { replace: true });
     }
   }, [navigate]);
+
+  function handleLogout() {
+    try { localStorage.removeItem('soai_admin_token'); } catch {}
+    navigate('/login', { replace: true });
+  }
+
   return (
-    <SidebarProvider style={{ "--sidebar-width": "12rem" } as any}>
+    <SidebarProvider style={{ '--sidebar-width': '13rem' } as any}>
       <Sidebar collapsible="offcanvas">
-        <SidebarHeader className="h-14 p-0">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:!p-0 w-full h-full">
-                <a href="#" className="flex w-full h-full items-center justify-center">
-                  <img src={import.meta.env.BASE_URL + 'SoAI_logo.svg'} alt="SoAI" className="w-[60%] h-auto max-h-full object-contain" />
-                </a>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+
+        {/* Sidebar header — logo + label */}
+        <SidebarHeader className="px-4 py-4 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <img
+              src={import.meta.env.BASE_URL + 'SoAI_logo.svg'}
+              alt="SoAI"
+              className="h-7 w-auto brightness-0 invert"
+            />
+            <div className="flex flex-col leading-tight">
+              <span className="text-[11px] font-bold tracking-widest text-white/90 uppercase">Admin</span>
+              <span className="text-[10px] text-white/50 tracking-wide">Portal</span>
+            </div>
+          </div>
         </SidebarHeader>
-        <SidebarContent>
+
+        {/* Nav items */}
+        <SidebarContent className="pt-2">
           <SidebarGroup>
-            <SidebarGroupLabel>Main</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <NavItem to="/members" icon={Users} label="Members" />
-                <NavItem to="/news" icon={Newspaper} label="News" />
-                <NavItem to="/events" icon={CalendarDays} label="Events" />
+                <NavItem to="/news"    icon={Newspaper} label="News" />
+                <NavItem to="/events"  icon={CalendarDays} label="Events" />
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter>
-          <div className="text-xs text-muted-foreground px-2">v1</div>
+
+        {/* Footer */}
+        <SidebarFooter className="border-t border-white/10 px-4 py-3">
+          <div className="mb-2 text-[10px] text-white/40 leading-snug">
+            Society of Algorithmic Intelligence
+          </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-xs text-white/50 hover:text-white/80 transition-colors"
+          >
+            <LogOut className="size-3.5" />
+            Sign out
+          </button>
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset>
-        <header className="bg-background sticky top-0 flex h-14 shrink-0 items-center border-b">
-          <SidebarTrigger />
-          <Separator orientation="vertical" className="data-[orientation=vertical]:h-4" />
+
+      <SidebarInset className="bg-background">
+        {/* Top header bar */}
+        <header className="sticky top-0 z-10 flex h-13 shrink-0 items-center gap-2 border-b bg-white px-4 shadow-sm">
+          <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
+          <Separator orientation="vertical" className="data-[orientation=vertical]:h-4 mx-1" />
           <Crumbs />
+          <div className="ml-auto">
+            <span className="text-[11px] font-semibold tracking-widest text-[#003d7b]/60 uppercase">SoAI Admin</span>
+          </div>
         </header>
-        <div>
+
+        {/* Page content */}
+        <main>
           <Outlet />
-        </div>
+        </main>
       </SidebarInset>
     </SidebarProvider>
   )
@@ -101,23 +138,19 @@ function Crumbs() {
   const titleFor = (seg: string) => {
     switch (seg) {
       case 'members': return 'Members';
-      case 'news': return 'News';
-      case 'events': return 'Events';
-      default: return 'Members';
+      case 'news':    return 'News';
+      case 'events':  return 'Events';
+      default:        return seg.charAt(0).toUpperCase() + seg.slice(1);
     }
   };
   return (
     <Breadcrumb>
       <BreadcrumbList>
         {segments.length === 0 && (
-          <BreadcrumbItem>
-            <BreadcrumbPage>Members</BreadcrumbPage>
-          </BreadcrumbItem>
+          <BreadcrumbItem><BreadcrumbPage>Members</BreadcrumbPage></BreadcrumbItem>
         )}
         {segments.length === 1 && (
-          <BreadcrumbItem>
-            <BreadcrumbPage>{titleFor(segments[0])}</BreadcrumbPage>
-          </BreadcrumbItem>
+          <BreadcrumbItem><BreadcrumbPage>{titleFor(segments[0])}</BreadcrumbPage></BreadcrumbItem>
         )}
         {segments.length > 1 && (
           <>
@@ -150,5 +183,3 @@ function Crumbs() {
     </Breadcrumb>
   );
 }
-
-

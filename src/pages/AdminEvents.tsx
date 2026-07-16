@@ -158,6 +158,14 @@ function exportHackathonRegistrations(eventName: string, rows: HackathonRegistra
   );
 }
 
+function PaymentStatusBadge({ status }: { status: string }) {
+  if (status === 'paid')
+    return <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-medium text-emerald-700">Paid</span>;
+  if (status === 'pending')
+    return <span className="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs font-medium text-amber-700">Pending</span>;
+  return <span className="inline-flex items-center rounded-full bg-gray-100 border border-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600">{status}</span>;
+}
+
 export default function AdminEvents() {
   const [events, setEvents] = useState<EventRegistrationEventSummary[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
@@ -278,28 +286,43 @@ export default function AdminEvents() {
         : participants.length;
 
   return (
-    <div className="max-w-7xl p-4 md:p-6">
-      <div className="grid grid-cols-3 items-center gap-2">
-        <div />
-        <h1 className="text-center text-2xl font-semibold">Events</h1>
-        <div className="flex justify-end gap-2">
-          {selectedEvent && (
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSelectedEvent(null);
-                setParticipants([]);
-                setHackathonRegistrations([]);
-                setHotelBookings([]);
-                setParticipantsError(null);
-                setHotelSyncMessage(null);
-              }}
-            >
-              Back to events
-            </Button>
+    <div className="p-6 md:p-8 max-w-7xl">
+      {/* Page header */}
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          {selectedEvent ? (
+            <>
+              <button
+                className="text-xs text-[#003d7b] hover:underline mb-1 block"
+                onClick={() => {
+                  setSelectedEvent(null);
+                  setParticipants([]);
+                  setHackathonRegistrations([]);
+                  setHotelBookings([]);
+                  setParticipantsError(null);
+                  setHotelSyncMessage(null);
+                }}
+              >
+                ← All events
+              </button>
+              <h1 className="text-xl font-semibold text-gray-900 leading-tight">{selectedEvent}</h1>
+              {selectedSummary && (
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {selectedSummary.paid} paid · {selectedSummary.total} total registrations
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <h1 className="text-xl font-semibold text-gray-900">Events</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">View and manage event registrations.</p>
+            </>
           )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             variant="outline"
+            size="sm"
             onClick={() => (selectedEvent ? loadParticipants(selectedEvent) : loadEvents())}
             disabled={eventsLoading || participantsLoading}
           >
@@ -308,86 +331,69 @@ export default function AdminEvents() {
           {selectedEvent && (
             <Button
               variant="outline"
+              size="sm"
               disabled={participantsLoading || visibleRegistrationCount === 0}
               onClick={() => {
-                if (participantSource === 'hackathon') {
-                  exportHackathonRegistrations(selectedEvent, hackathonRegistrations);
-                } else if (participantSource === 'hotel') {
-                  exportHotelBookings(hotelBookings);
-                } else {
-                  exportStripeParticipants(selectedEvent, participants);
-                }
+                if (participantSource === 'hackathon') exportHackathonRegistrations(selectedEvent, hackathonRegistrations);
+                else if (participantSource === 'hotel') exportHotelBookings(hotelBookings);
+                else exportStripeParticipants(selectedEvent, participants);
               }}
             >
               Export CSV
             </Button>
           )}
           {selectedEvent && participantSource === 'hotel' && (
-            <Button
-              variant="outline"
-              disabled={hotelSyncing || participantsLoading}
-              onClick={handleHotelSheetSync}
-            >
-              {hotelSyncing ? 'Syncing...' : 'Sync to hotel sheet'}
+            <Button variant="outline" size="sm" disabled={hotelSyncing || participantsLoading} onClick={handleHotelSheetSync}>
+              {hotelSyncing ? 'Syncing…' : 'Sync to sheet'}
             </Button>
           )}
         </div>
       </div>
 
       {!selectedEvent && (
-        <div className="mt-4">
-          {eventsError && <div className="mb-3 text-sm text-red-600">{eventsError}</div>}
-          <div className="overflow-hidden rounded-lg border bg-white">
+        <div>
+          {eventsError && <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">{eventsError}</div>}
+          <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Event</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Paid / confirmed</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Last activity</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                <TableRow className="bg-gray-50 border-b">
+                  <TableHead className="font-semibold text-gray-700">Event</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Source</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Paid / Confirmed</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Total</TableHead>
+                  <TableHead className="font-semibold text-gray-700">Last Activity</TableHead>
+                  <TableHead className="text-right font-semibold text-gray-700">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {eventsLoading && (
-                  <TableRow>
-                    <TableCell colSpan={6}>Loading...</TableCell>
-                  </TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
                 )}
                 {!eventsLoading && events.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6}>No events with registrations yet.</TableCell>
-                  </TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No events with registrations yet.</TableCell></TableRow>
                 )}
-                {!eventsLoading &&
-                  events.map((event) => (
-                    <TableRow key={event.event}>
-                      <TableCell className="font-medium">{event.event}</TableCell>
-                      <TableCell>
-                        {event.source === 'hackathon'
-                          ? 'Hackathon registration form'
-                          : event.source === 'hotel'
-                            ? 'Hotel booking'
-                            : 'Stripe'}
-                      </TableCell>
-                      <TableCell>{event.paid}</TableCell>
-                      <TableCell>{event.total}</TableCell>
-                      <TableCell>{fmtDate(event.last_paid_at)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={async () => {
-                            setSelectedEvent(event.event);
-                            await loadParticipants(event.event);
-                          }}
-                        >
-                          View registrations
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                {!eventsLoading && events.map((event) => (
+                  <TableRow key={event.event} className="hover:bg-slate-50 transition-colors">
+                    <TableCell className="font-medium">{event.event}</TableCell>
+                    <TableCell className="text-sm text-gray-500">
+                      {event.source === 'hackathon' ? 'Hackathon form' : event.source === 'hotel' ? 'Hotel booking' : 'Stripe'}
+                    </TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                        {event.paid}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm">{event.total}</TableCell>
+                    <TableCell className="text-sm text-gray-500">{fmtDate(event.last_paid_at)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button size="sm" variant="outline" className="h-7 text-xs"
+                        onClick={async () => { setSelectedEvent(event.event); await loadParticipants(event.event); }}
+                      >
+                        View →
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </div>
@@ -395,90 +401,72 @@ export default function AdminEvents() {
       )}
 
       {selectedEvent && (
-        <div className="mt-6">
-          <div className="mb-3">
-            <div className="text-lg font-semibold">{selectedEvent}</div>
-            {selectedSummary && (
-              <div className="text-sm text-muted-foreground">
-                Paid / confirmed: {selectedSummary.paid} / Total: {selectedSummary.total}
-              </div>
-            )}
-          </div>
-
-          {participantsError && <div className="mb-3 text-sm text-red-600">{participantsError}</div>}
-          {hotelSyncMessage && <div className="mb-3 text-sm text-green-700">{hotelSyncMessage}</div>}
+        <div>
+          {participantsError && <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">{participantsError}</div>}
+          {hotelSyncMessage && <div className="mb-4 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2">{hotelSyncMessage}</div>}
 
           {participantSource === 'hotel' ? (
-            <div className="overflow-x-auto rounded-lg border bg-white">
+            <div className="overflow-x-auto rounded-lg border bg-white shadow-sm">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Room Type</TableHead>
-                    <TableHead>Check-in</TableHead>
-                    <TableHead>Check-out</TableHead>
-                    <TableHead>Nights</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Booked</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                  <TableRow className="bg-gray-50 border-b">
+                    <TableHead className="font-semibold text-gray-700">Name</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Email</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Room Type</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Check-in</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Check-out</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Nights</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Amount</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Status</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Booked</TableHead>
+                    <TableHead className="text-right font-semibold text-gray-700">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {participantsLoading && (
-                    <TableRow>
-                      <TableCell colSpan={10}>Loading...</TableCell>
-                    </TableRow>
+                    <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
                   )}
                   {!participantsLoading && hotelBookings.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={10}>No hotel bookings yet.</TableCell>
-                    </TableRow>
+                    <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">No hotel bookings yet.</TableCell></TableRow>
                   )}
-                  {!participantsLoading &&
-                    hotelBookings.map((booking) => (
-                      <TableRow key={booking.id}>
-                        <TableCell className="font-medium">
-                          {booking.first_name} {booking.last_name}
-                        </TableCell>
-                        <TableCell>{booking.email}</TableCell>
-                        <TableCell>{booking.room_type}</TableCell>
-                        <TableCell>{booking.check_in}</TableCell>
-                        <TableCell>{booking.check_out}</TableCell>
-                        <TableCell>{booking.nights}</TableCell>
-                        <TableCell>{fmtMoney(booking.amount_total, booking.currency)}</TableCell>
-                        <TableCell>{booking.payment_status}</TableCell>
-                        <TableCell>{fmtDate(booking.created_at)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDelete('hotel', booking.id, booking.email || 'this guest')}
-                          >
-                            Delete
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                  {!participantsLoading && hotelBookings.map((booking) => (
+                    <TableRow key={booking.id} className="hover:bg-slate-50 transition-colors">
+                      <TableCell className="font-medium">{booking.first_name} {booking.last_name}</TableCell>
+                      <TableCell className="text-sm">{booking.email}</TableCell>
+                      <TableCell className="text-sm">{booking.room_type}</TableCell>
+                      <TableCell className="text-sm">{booking.check_in}</TableCell>
+                      <TableCell className="text-sm">{booking.check_out}</TableCell>
+                      <TableCell className="text-sm">{booking.nights}</TableCell>
+                      <TableCell className="text-sm font-medium">{fmtMoney(booking.amount_total, booking.currency)}</TableCell>
+                      <TableCell><PaymentStatusBadge status={booking.payment_status} /></TableCell>
+                      <TableCell className="text-xs text-gray-500">{fmtDate(booking.created_at)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="destructive" size="sm" className="h-7 text-xs"
+                          onClick={() => handleDelete('hotel', booking.id, booking.email || 'this guest')}
+                        >
+                          Delete
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>
           ) : participantSource === 'hackathon' ? (
-            <div className="overflow-x-auto rounded-lg border bg-white">
+            <div className="overflow-x-auto rounded-lg border bg-white shadow-sm">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Registration</TableHead>
-                    <TableHead>Affiliation</TableHead>
-                    <TableHead>Country/Region</TableHead>
-                    <TableHead>Membership</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Registered</TableHead>
-                    <TableHead className="text-right">Details</TableHead>
+                  <TableRow className="bg-gray-50 border-b">
+                    <TableHead className="font-semibold text-gray-700">Name</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Email</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Registration</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Affiliation</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Country/Region</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Membership</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Status</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Amount</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Registered</TableHead>
+                    <TableHead className="text-right font-semibold text-gray-700">Details</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -488,14 +476,12 @@ export default function AdminEvents() {
                     </TableRow>
                   )}
                   {!participantsLoading && hackathonRegistrations.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={10}>No hackathon registrations found.</TableCell>
-                    </TableRow>
+                    <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">No hackathon registrations found.</TableCell></TableRow>
                   )}
                   {!participantsLoading &&
                     hackathonRegistrations.map((registration) => (
                       <Fragment key={registration.id}>
-                        <TableRow>
+                        <TableRow className="hover:bg-slate-50 transition-colors">
                           <TableCell className="font-medium">{registration.full_name}</TableCell>
                           <TableCell>{registration.email}</TableCell>
                           <TableCell>
@@ -546,8 +532,8 @@ export default function AdminEvents() {
                         </TableRow>
                         {expandedRegistrationId === registration.id && (
                           <TableRow>
-                            <TableCell colSpan={10}>
-                              <div className="grid gap-3 rounded-lg bg-muted/20 p-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                            <TableCell colSpan={10} className="bg-slate-50 p-0">
+                              <div className="grid gap-3 px-6 py-4 text-sm md:grid-cols-2 xl:grid-cols-3">
                                 <div>
                                   <span className="text-muted-foreground">Title:</span>{' '}
                                   {registration.title}
@@ -622,37 +608,33 @@ export default function AdminEvents() {
               </Table>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-lg border bg-white">
+            <div className="overflow-x-auto rounded-lg border bg-white shadow-sm">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Affiliation</TableHead>
-                    <TableHead>Country/Region</TableHead>
-                    <TableHead>Membership / ISI ID</TableHead>
-                    <TableHead>Tier</TableHead>
-                    <TableHead>Hands-on tutorial</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Paid at</TableHead>
-                    <TableHead>Stripe session</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                  <TableRow className="bg-gray-50 border-b">
+                    <TableHead className="font-semibold text-gray-700">Name</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Email</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Affiliation</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Country/Region</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Membership</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Tier</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Tutorial</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Amount</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Paid at</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Stripe session</TableHead>
+                    <TableHead className="text-right font-semibold text-gray-700">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {participantsLoading && (
-                    <TableRow>
-                      <TableCell colSpan={11}>Loading...</TableCell>
-                    </TableRow>
+                    <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
                   )}
                   {!participantsLoading && participants.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={11}>No participants found.</TableCell>
-                    </TableRow>
+                    <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">No participants found.</TableCell></TableRow>
                   )}
                   {!participantsLoading &&
                     participants.map((participant) => (
-                      <TableRow key={participant.id}>
+                      <TableRow key={participant.id} className="hover:bg-slate-50 transition-colors">
                         <TableCell className="font-medium">{participant.full_name || ''}</TableCell>
                         <TableCell>{participant.email || ''}</TableCell>
                         <TableCell>{participant.affiliation || ''}</TableCell>
