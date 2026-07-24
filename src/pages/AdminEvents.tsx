@@ -86,6 +86,7 @@ function exportStripeParticipants(eventName: string, rows: EventRegistrationPart
     'membership_status',
     'tier',
     'hands_on_tutorial_preference',
+    'dietary_requirements',
     'amount_total',
     'currency',
     'payment_status',
@@ -557,6 +558,12 @@ export default function AdminEvents() {
                                   <span className="text-muted-foreground">Paid at:</span>{' '}
                                   {fmtDate(registration.paid_at)}
                                 </div>
+                                {registration.dietary_requirements && (
+                                  <div>
+                                    <span className="text-muted-foreground">Dietary requirements:</span>{' '}
+                                    {registration.dietary_requirements}
+                                  </div>
+                                )}
                                 <div>
                                   <span className="text-muted-foreground">Stripe session:</span>{' '}
                                   <span className="font-mono">{registration.stripe_session_id || ''}</span>
