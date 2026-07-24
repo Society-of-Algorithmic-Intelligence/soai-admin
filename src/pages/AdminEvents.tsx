@@ -558,12 +558,6 @@ export default function AdminEvents() {
                                   <span className="text-muted-foreground">Paid at:</span>{' '}
                                   {fmtDate(registration.paid_at)}
                                 </div>
-                                {'dietary_requirements' in registration && registration.dietary_requirements && (
-                                  <div>
-                                    <span className="text-muted-foreground">Dietary requirements:</span>{' '}
-                                    {registration.dietary_requirements}
-                                  </div>
-                                )}
                                 <div>
                                   <span className="text-muted-foreground">Stripe session:</span>{' '}
                                   <span className="font-mono">{registration.stripe_session_id || ''}</span>
@@ -652,6 +646,11 @@ export default function AdminEvents() {
                         <TableCell>{participant.tier || ''}</TableCell>
                         <TableCell>
                           {handsOnTutorialLabel(participant.hands_on_tutorial_preference)}
+                          {participant.dietary_requirements && (
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              Dietary: {participant.dietary_requirements}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>{fmtMoney(participant.amount_total, participant.currency)}</TableCell>
                         <TableCell>{fmtDate(participant.paid_at)}</TableCell>

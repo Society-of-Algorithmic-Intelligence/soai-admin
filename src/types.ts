@@ -62,6 +62,7 @@ export interface EventRegistrationParticipant {
   member?: string | null;
   /** Stripe metadata: quantum | ai_coding | ai_trading | na */
   hands_on_tutorial_preference?: string | null;
+  dietary_requirements?: string | null;
   amount_total?: number | null;
   currency?: string | null;
   payment_status?: string | null;
