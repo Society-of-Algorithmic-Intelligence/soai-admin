@@ -558,7 +558,7 @@ export default function AdminEvents() {
                                   <span className="text-muted-foreground">Paid at:</span>{' '}
                                   {fmtDate(registration.paid_at)}
                                 </div>
-                                {registration.dietary_requirements && (
+                                {'dietary_requirements' in registration && registration.dietary_requirements && (
                                   <div>
                                     <span className="text-muted-foreground">Dietary requirements:</span>{' '}
                                     {registration.dietary_requirements}
