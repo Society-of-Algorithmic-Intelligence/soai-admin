@@ -9,9 +9,20 @@ import {
   TableCell,
 } from '../components/ui/table';
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from '../components/ui/sheet';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import {
   fetchEventRegistrationEvents,
   fetchEventRegistrationParticipants,
   deleteEventRegistrationParticipant,
+  updateEventRegistrationParticipant,
   resendEventRegistrationEmail,
   syncHotelBookingsToExternalSheet,
 } from '../lib/api';
@@ -56,6 +67,49 @@ function handsOnTutorialLabel(value: string | null | undefined) {
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
+
+const EDIT_FIELDS: Record<
+  'stripe' | 'hackathon' | 'hotel',
+  Array<{ key: string; label: string }>
+> = {
+  stripe: [
+    { key: 'first_name', label: 'First name' },
+    { key: 'middle_name', label: 'Middle name' },
+    { key: 'last_name', label: 'Last name' },
+    { key: 'full_name', label: 'Full name' },
+    { key: 'email', label: 'Email' },
+    { key: 'title', label: 'Title' },
+    { key: 'affiliation', label: 'Affiliation' },
+    { key: 'country', label: 'Country/Region' },
+    { key: 'personal_webpage', label: 'Personal webpage' },
+    { key: 'membership_status', label: 'Membership status' },
+    { key: 'tier', label: 'Tier' },
+    { key: 'hands_on_tutorial_preference', label: 'Tutorial preference (quantum | ai_coding | ai_trading | na)' },
+  ],
+  hackathon: [
+    { key: 'first_name', label: 'First name' },
+    { key: 'middle_name', label: 'Middle name' },
+    { key: 'last_name', label: 'Last name' },
+    { key: 'email', label: 'Email' },
+    { key: 'title', label: 'Title' },
+    { key: 'affiliation', label: 'Affiliation' },
+    { key: 'country', label: 'Country/Region' },
+    { key: 'personal_webpage', label: 'Personal webpage' },
+    { key: 'membership_status', label: 'Membership status' },
+    { key: 'team_name', label: 'Team name' },
+  ],
+  hotel: [
+    { key: 'first_name', label: 'First name' },
+    { key: 'last_name', label: 'Last name' },
+    { key: 'email', label: 'Email' },
+    { key: 'room_type', label: 'Room type' },
+    { key: 'check_in', label: 'Check-in' },
+    { key: 'check_out', label: 'Check-out' },
+    { key: 'arrival_flight_details', label: 'Arrival flight details' },
+    { key: 'departure_flight_details', label: 'Departure flight details' },
+    { key: 'remarks', label: 'Remarks' },
+  ],
+};
 
 function downloadCsv(filename: string, headers: string[], rows: Array<Record<string, unknown>>) {
   const lines = [
@@ -183,6 +237,14 @@ export default function AdminEvents() {
   const [hotelSyncMessage, setHotelSyncMessage] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [resendResults, setResendResults] = useState<Record<string, { ok: boolean; msg: string }>>({});
+  const [editing, setEditing] = useState<{
+    source: 'stripe' | 'hackathon' | 'hotel';
+    id: string;
+    label: string;
+    fields: Record<string, string>;
+  } | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   async function loadEvents() {
     setEventsLoading(true);
@@ -267,6 +329,41 @@ export default function AdminEvents() {
       setResendResults((prev) => ({ ...prev, [id]: { ok: false, msg: errorMessage(error, 'Failed to resend.') } }));
     } finally {
       setResendingId(null);
+    }
+  }
+
+  function openEdit(
+    source: 'stripe' | 'hackathon' | 'hotel',
+    id: string,
+    label: string,
+    row: object,
+  ) {
+    const record = row as Record<string, unknown>;
+    const fields: Record<string, string> = {};
+    for (const field of EDIT_FIELDS[source]) {
+      fields[field.key] = String(record[field.key] ?? '');
+    }
+    setEditError(null);
+    setEditing({ source, id, label, fields });
+  }
+
+  async function handleSaveEdit() {
+    if (!editing) return;
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const fields: Record<string, string | null> = {};
+      for (const [key, value] of Object.entries(editing.fields)) {
+        const trimmed = value.trim();
+        fields[key] = trimmed === '' ? null : trimmed;
+      }
+      await updateEventRegistrationParticipant(editing.source, editing.id, fields);
+      if (selectedEvent) await loadParticipants(selectedEvent);
+      setEditing(null);
+    } catch (error) {
+      setEditError(errorMessage(error, 'Failed to update participant.'));
+    } finally {
+      setEditSaving(false);
     }
   }
 
@@ -442,11 +539,20 @@ export default function AdminEvents() {
                       <TableCell><PaymentStatusBadge status={booking.payment_status} /></TableCell>
                       <TableCell className="text-xs text-gray-500">{fmtDate(booking.created_at)}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="destructive" size="sm" className="h-7 text-xs"
-                          onClick={() => handleDelete('hotel', booking.id, booking.email || 'this guest')}
-                        >
-                          Delete
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" size="sm" className="h-7 text-xs"
+                            onClick={() =>
+                              openEdit('hotel', booking.id, `${booking.first_name} ${booking.last_name}`.trim() || booking.email || 'this guest', booking)
+                            }
+                          >
+                            Edit
+                          </Button>
+                          <Button variant="destructive" size="sm" className="h-7 text-xs"
+                            onClick={() => handleDelete('hotel', booking.id, booking.email || 'this guest')}
+                          >
+                            Delete
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -518,6 +624,15 @@ export default function AdminEvents() {
                                 }
                               >
                                 {expandedRegistrationId === registration.id ? 'Hide' : 'Details'}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  openEdit('hackathon', registration.id, registration.full_name || registration.email, registration)
+                                }
+                              >
+                                Edit
                               </Button>
                               <Button
                                 size="sm"
@@ -663,6 +778,15 @@ export default function AdminEvents() {
                               <Button
                                 size="sm"
                                 variant="outline"
+                                onClick={() =>
+                                  openEdit('stripe', participant.id, participant.full_name || participant.email || 'this participant', participant)
+                                }
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
                                 disabled={resendingId === participant.id}
                                 onClick={() => handleResendEmail(participant.id)}
                               >
@@ -692,6 +816,44 @@ export default function AdminEvents() {
             </div>
           )}
         </div>
+      )}
+
+      {editing && (
+        <Sheet open onOpenChange={(open) => { if (!open) setEditing(null); }}>
+          <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
+            <SheetHeader>
+              <SheetTitle>Edit {editing.label}</SheetTitle>
+              <SheetDescription>
+                Update the participant's details, then use "Resend Email" to reissue the confirmation, invitation letter and invoice with the corrected information.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="grid gap-4 px-4 pb-6">
+              {EDIT_FIELDS[editing.source].map((field) => (
+                <div key={field.key} className="grid gap-1.5">
+                  <Label htmlFor={`edit-${field.key}`}>{field.label}</Label>
+                  <Input
+                    id={`edit-${field.key}`}
+                    value={editing.fields[field.key] ?? ''}
+                    onChange={(event) =>
+                      setEditing((prev) =>
+                        prev
+                          ? { ...prev, fields: { ...prev.fields, [field.key]: event.target.value } }
+                          : prev,
+                      )
+                    }
+                  />
+                </div>
+              ))}
+              {editError && <p className="text-sm text-red-600">{editError}</p>}
+            </div>
+            <SheetFooter>
+              <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+              <Button onClick={() => void handleSaveEdit()} disabled={editSaving}>
+                {editSaving ? 'Saving…' : 'Save changes'}
+              </Button>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
       )}
     </div>
   );

@@ -158,6 +158,17 @@ export async function deleteEventRegistrationParticipant(
   );
 }
 
+export async function updateEventRegistrationParticipant(
+  source: 'stripe' | 'hackathon' | 'hotel',
+  id: string,
+  fields: Record<string, string | null>,
+): Promise<{ ok: boolean }> {
+  return await http<{ ok: boolean }>('/api/admin/event-registrations/participants', {
+    method: 'PATCH',
+    body: JSON.stringify({ id, source, fields }),
+  });
+}
+
 export async function resendEventRegistrationEmail(id: string): Promise<{ ok: boolean; email: string }> {
   return await http<{ ok: boolean; email: string }>(
     '/api/admin/event-registrations/resend-email',
