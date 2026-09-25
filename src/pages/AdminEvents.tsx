@@ -24,6 +24,7 @@ import {
   deleteEventRegistrationParticipant,
   updateEventRegistrationParticipant,
   resendEventRegistrationEmail,
+  sendEventRegistrationCertificate,
   syncHotelBookingsToExternalSheet,
 } from '../lib/api';
 import type {
@@ -236,6 +237,7 @@ export default function AdminEvents() {
   const [hotelSyncing, setHotelSyncing] = useState(false);
   const [hotelSyncMessage, setHotelSyncMessage] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [sendingCertificateId, setSendingCertificateId] = useState<string | null>(null);
   const [resendResults, setResendResults] = useState<Record<string, { ok: boolean; msg: string }>>({});
   const [editing, setEditing] = useState<{
     source: 'stripe' | 'hackathon' | 'hotel';
@@ -329,6 +331,19 @@ export default function AdminEvents() {
       setResendResults((prev) => ({ ...prev, [id]: { ok: false, msg: errorMessage(error, 'Failed to resend.') } }));
     } finally {
       setResendingId(null);
+    }
+  }
+
+  async function handleSendCertificate(id: string) {
+    setSendingCertificateId(id);
+    setResendResults((prev) => ({ ...prev, [id]: { ok: false, msg: '' } }));
+    try {
+      const result = await sendEventRegistrationCertificate(id);
+      setResendResults((prev) => ({ ...prev, [id]: { ok: true, msg: `Certificate sent to ${result.email}` } }));
+    } catch (error) {
+      setResendResults((prev) => ({ ...prev, [id]: { ok: false, msg: errorMessage(error, 'Failed to send certificate.') } }));
+    } finally {
+      setSendingCertificateId(null);
     }
   }
 
@@ -793,6 +808,14 @@ export default function AdminEvents() {
                                 {resendingId === participant.id ? 'Sending…' : 'Resend Email'}
                               </Button>
                               <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={sendingCertificateId === participant.id}
+                                onClick={() => handleSendCertificate(participant.id)}
+                              >
+                                {sendingCertificateId === participant.id ? 'Sending…' : 'Send Certificate'}
+                              </Button>
+                              <Button
                                 variant="destructive"
                                 size="sm"
                                 onClick={() =>
@@ -824,7 +847,7 @@ export default function AdminEvents() {
             <SheetHeader>
               <SheetTitle>Edit {editing.label}</SheetTitle>
               <SheetDescription>
-                Update the participant's details, then use "Resend Email" to reissue the confirmation, invitation letter and invoice with the corrected information.
+                Update the participant's details, then use "Resend Email" to reissue the confirmation, invitation letter and invoice, or "Send Certificate" to email a certificate of attendance with the corrected information.
               </SheetDescription>
             </SheetHeader>
             <div className="grid gap-4 px-4 pb-6">

@@ -176,6 +176,13 @@ export async function resendEventRegistrationEmail(id: string): Promise<{ ok: bo
   );
 }
 
+export async function sendEventRegistrationCertificate(id: string): Promise<{ ok: boolean; email: string }> {
+  return await http<{ ok: boolean; email: string }>(
+    '/api/admin/event-registrations/send-certificate',
+    { method: 'POST', body: JSON.stringify({ id }) },
+  );
+}
+
 export async function syncHotelBookingsToExternalSheet(): Promise<{
   ok: boolean;
   count: number;
