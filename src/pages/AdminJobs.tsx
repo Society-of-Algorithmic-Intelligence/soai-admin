@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Download, Pencil, Plus, RefreshCw, Trash2, Users } from 'lucide-react';
+import { Download, Eye, Pencil, Plus, RefreshCw, Trash2, Users } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -74,9 +74,10 @@ const APPLICATION_STATUSES: JobApplicationStatus[] = ['NEW', 'REVIEWED', 'SHORTL
 
 function fmtDate(value: string | null | undefined) {
   if (!value) return '';
-  const date = new Date(value);
+  const normalized = value.includes('T') ? value : `${value.replace(' ', 'T')}Z`;
+  const date = new Date(normalized);
   if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleDateString();
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function fmtSize(bytes: number | null | undefined) {
@@ -638,7 +639,20 @@ export default function AdminJobs() {
           )}
 
           <div className="overflow-x-auto rounded-lg border bg-white shadow-sm">
-            <Table className="min-w-[1500px]">
+            <Table className="w-full min-w-[1200px] table-fixed">
+              <colgroup>
+                <col style={{ width: '9%' }} />
+                <col style={{ width: '13%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '6%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '9%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '6%' }} />
+                <col style={{ width: '6%' }} />
+                <col style={{ width: '12%' }} />
+              </colgroup>
               <TableHeader>
                 <TableRow className="border-b bg-gray-50">
                   <TableHead className="whitespace-nowrap font-semibold text-gray-700">Applicant</TableHead>
@@ -765,27 +779,31 @@ export default function AdminJobs() {
                           </span>
                         </TableCell>
                         <TableCell className="align-top">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1.5">
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => openApplication(application)}
+                              aria-label={`View application from ${application.full_name}`}
+                              title="View application"
                             >
-                              View
+                              <Eye className="size-3.5" />
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => void downloadResume(application)}
-                              className="gap-1"
+                              aria-label={`Download resume from ${application.full_name}`}
+                              title="Download resume"
                             >
-                              <Download className="size-3.5" /> Resume
+                              <Download className="size-3.5" />
                             </Button>
                             <Button
                               variant="destructive"
                               size="sm"
                               onClick={() => void removeApplication(application)}
                               aria-label={`Delete application from ${application.full_name}`}
+                              title="Delete application"
                             >
                               <Trash2 className="size-3.5" />
                             </Button>

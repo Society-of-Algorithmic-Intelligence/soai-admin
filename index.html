@@ -8,6 +8,21 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Consume ?redirect=... added by 404.html so deep links survive GitHub Pages.
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var redirect = params.get('redirect');
+        if (!redirect) return;
+        try {
+          var target = decodeURIComponent(redirect);
+          if (target.indexOf('/soai-admin/') !== 0) target = '/soai-admin/';
+          window.history.replaceState(null, '', target);
+        } catch (e) {
+          window.history.replaceState(null, '', '/soai-admin/');
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

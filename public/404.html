@@ -4,21 +4,25 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Redirecting…</title>
-    <meta http-equiv="refresh" content="0; url=/soai-admin/" />
   </head>
   <body>
     <noscript>
       <a href="/soai-admin/">Go to the app</a>
     </noscript>
     <script>
-      (function(){
+      (function () {
         var base = '/soai-admin/';
-        if (location.pathname.indexOf(base) !== 0) {
-          location.replace(base);
-        } else {
-          location.replace(base);
+        var path = window.location.pathname;
+        var suffix = path.indexOf(base) === 0 ? path.slice(base.length) : '';
+
+        if (!suffix) {
+          window.location.replace(base);
+          return;
         }
+
+        var target = base + suffix + window.location.search + window.location.hash;
+        window.location.replace(base + '?redirect=' + encodeURIComponent(target));
       })();
     </script>
   </body>
- </html>
+</html>
