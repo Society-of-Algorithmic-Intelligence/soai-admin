@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Download, Pencil, Plus, RefreshCw, Trash2, Users } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -33,6 +34,7 @@ import type {
   JobPosting,
   JobInput,
   JobApplication,
+  JobApplicationEducation,
   JobApplicationStatus,
   JobStatus,
 } from '../types';
@@ -83,6 +85,99 @@ function fmtSize(bytes: number | null | undefined) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function fmtEducation(education: JobApplicationEducation[] | null | undefined) {
+  if (!education || education.length === 0) return '—';
+  return education
+    .map(
+      (entry) =>
+        `${entry.school} — ${entry.degree}, ${entry.discipline} (${entry.start_date} to ${entry.end_date})`,
+    )
+    .join('; ');
+}
+
+function csvCell(value: unknown) {
+  return `"${String(value ?? '').replaceAll('"', '""')}"`;
+}
+
+function exportApplicationsCsv(jobTitle: string, rows: JobApplication[]) {
+  const headers = [
+    'job_title',
+    'first_name',
+    'last_name',
+    'preferred_first_name',
+    'email',
+    'phone',
+    'country',
+    'current_country',
+    'current_employer',
+    'research_years',
+    'highest_education',
+    'education',
+    'work_authorized',
+    'sponsorship_required',
+    'visa_details',
+    'pronouns',
+    'referral_source',
+    'linkedin_url',
+    'cover_letter',
+    'resume_filename',
+    'privacy_consent',
+    'consent_at',
+    'status',
+    'notes',
+    'created_at',
+  ];
+  const lines = [
+    headers.join(','),
+    ...rows.map((row) =>
+      [
+        row.job_title,
+        row.first_name,
+        row.last_name,
+        row.preferred_first_name,
+        row.email,
+        row.phone,
+        row.country,
+        row.current_country,
+        row.current_employer,
+        row.research_years,
+        row.highest_education,
+        fmtEducation(row.education),
+        row.work_authorized,
+        row.sponsorship_required,
+        row.visa_details,
+        row.pronouns,
+        row.referral_source,
+        row.linkedin_url,
+        row.cover_letter,
+        row.resume_filename,
+        row.privacy_consent ? 'Yes' : 'No',
+        row.consent_at,
+        row.status,
+        row.notes,
+        row.created_at,
+      ]
+        .map(csvCell)
+        .join(','),
+    ),
+  ];
+  const blob = new Blob([`\ufeff${lines.join('\n')}`], {
+    type: 'text/csv;charset=utf-8;',
+  });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  const safeTitle = (jobTitle || 'all-applications')
+    .replace(/[^\w.-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase();
+  anchor.href = url;
+  anchor.download = `${safeTitle || 'applications'}.csv`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
@@ -120,6 +215,15 @@ const selectClass =
   'h-9 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-[#003d7b] focus:outline-none focus:ring-1 focus:ring-[#003d7b]';
 const textareaClass =
   'min-h-[90px] w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-[#003d7b] focus:outline-none focus:ring-1 focus:ring-[#003d7b]';
+
+function DetailRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <span className="shrink-0 text-gray-500">{label}</span>
+      <span className="min-w-0 text-right font-medium text-gray-900">{children}</span>
+    </div>
+  );
+}
 
 export default function AdminJobs() {
   const [tab, setTab] = useState<'jobs' | 'applications'>('jobs');
@@ -179,6 +283,7 @@ export default function AdminJobs() {
 
   const totalApplications = jobs.reduce((sum, job) => sum + (job.application_count || 0), 0);
   const publishedCount = jobs.filter((job) => job.status === 'PUBLISHED').length;
+  const selectedJob = jobs.find((job) => job.id === jobFilter) || null;
   const linkedinHref = safeHttpUrl(viewingApp?.linkedin_url);
   const portfolioHref = safeHttpUrl(viewingApp?.portfolio_url);
 
@@ -432,6 +537,17 @@ export default function AdminJobs() {
                           <Button
                             variant="outline"
                             size="sm"
+                            onClick={() => {
+                              setJobFilter(job.id);
+                              setTab('applications');
+                            }}
+                            className="gap-1"
+                          >
+                            <Users className="size-3.5" /> Applicants
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => openEditJob(job)}
                             className="gap-1"
                           >
@@ -457,16 +573,30 @@ export default function AdminJobs() {
 
       {tab === 'applications' && (
         <div>
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground">
-              {appsLoading ? 'Loading applications…' : `${applications.length} applications shown`}
-            </p>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="job-filter" className="text-sm text-gray-600">
-                Role
-              </Label>
+          {jobFilter !== 'all' && (
+            <button
+              type="button"
+              onClick={() => setJobFilter('all')}
+              className="mb-2 text-xs font-medium text-[#003d7b] hover:underline"
+            >
+              ← All job postings
+            </button>
+          )}
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                {jobFilter === 'all' ? 'All applications' : selectedJob?.title || 'Applications'}
+              </h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {appsLoading
+                  ? 'Loading applications…'
+                  : `${applications.length} applicant${applications.length === 1 ? '' : 's'}`}
+                {selectedJob ? ` · ${selectedJob.location || 'Location not specified'}` : ''}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
               <select
-                id="job-filter"
+                aria-label="Filter by role"
                 value={jobFilter}
                 onChange={(event) => setJobFilter(event.target.value)}
                 className={selectClass}
@@ -478,6 +608,26 @@ export default function AdminJobs() {
                   </option>
                 ))}
               </select>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void loadApplications(jobFilter)}
+                disabled={appsLoading}
+                className="gap-1.5"
+              >
+                <RefreshCw className="size-3.5" /> Refresh
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  exportApplicationsCsv(selectedJob?.title || 'All applications', applications)
+                }
+                disabled={applications.length === 0}
+                className="gap-1.5"
+              >
+                <Download className="size-3.5" /> Export CSV
+              </Button>
             </div>
           </div>
 
@@ -487,84 +637,163 @@ export default function AdminJobs() {
             </div>
           )}
 
-          <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
-            <Table>
+          <div className="overflow-x-auto rounded-lg border bg-white shadow-sm">
+            <Table className="min-w-[1500px]">
               <TableHeader>
                 <TableRow className="border-b bg-gray-50">
-                  <TableHead className="font-semibold text-gray-700">Applicant</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Email</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Role</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Applied</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Status</TableHead>
-                  <TableHead className="text-right font-semibold text-gray-700">Actions</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold text-gray-700">Applicant</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold text-gray-700">Contact</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold text-gray-700">Location</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold text-gray-700">Current employer</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold text-gray-700">Research</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold text-gray-700">Education</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold text-gray-700">Authorization</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold text-gray-700">Source</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold text-gray-700">Applied</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold text-gray-700">Status</TableHead>
+                  <TableHead className="whitespace-nowrap text-right font-semibold text-gray-700">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {appsLoading && (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                    <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
                       Loading applications…
                     </TableCell>
                   </TableRow>
                 )}
                 {!appsLoading && applications.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
-                      No applications yet.
+                    <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
+                      No applications for this role yet.
                     </TableCell>
                   </TableRow>
                 )}
                 {!appsLoading &&
-                  applications.map((application) => (
-                    <TableRow key={application.id} className="transition-colors hover:bg-slate-50">
-                      <TableCell className="font-medium text-gray-900">
-                        {application.full_name || `${application.first_name} ${application.last_name}`}
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-600">
-                        <a href={`mailto:${application.email}`} className="hover:underline">
-                          {application.email}
-                        </a>
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-600">{application.job_title}</TableCell>
-                      <TableCell className="text-sm text-gray-600">
-                        {fmtDate(application.created_at)}
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${applicationStatusClass(application.status)}`}
-                        >
-                          {application.status}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openApplication(application)}
+                  applications.map((application) => {
+                    const linkedin = safeHttpUrl(application.linkedin_url);
+                    return (
+                      <TableRow key={application.id} className="align-top transition-colors hover:bg-slate-50">
+                        <TableCell className="align-top">
+                          <div className="font-medium text-gray-900">
+                            {application.full_name ||
+                              `${application.first_name} ${application.last_name}`}
+                          </div>
+                          {application.preferred_first_name && (
+                            <div className="mt-0.5 text-xs text-gray-500">
+                              Preferred: {application.preferred_first_name}
+                            </div>
+                          )}
+                          {application.pronouns && (
+                            <div className="mt-0.5 text-xs text-gray-500">
+                              {application.pronouns}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="align-top text-sm text-gray-600">
+                          <a href={`mailto:${application.email}`} className="hover:underline">
+                            {application.email}
+                          </a>
+                          <div className="mt-0.5 text-xs text-gray-500">{application.phone || '—'}</div>
+                          {linkedin && (
+                            <a
+                              href={linkedin}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-0.5 block text-xs text-[#003d7b] hover:underline"
+                            >
+                              LinkedIn
+                            </a>
+                          )}
+                        </TableCell>
+                        <TableCell className="align-top text-sm text-gray-600">
+                          <div>{application.current_country || '—'}</div>
+                          {application.country && (
+                            <div className="mt-0.5 text-xs text-gray-500">
+                              Country: {application.country}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="max-w-[180px] align-top text-sm text-gray-600">
+                          {application.current_employer || '—'}
+                        </TableCell>
+                        <TableCell className="align-top text-sm text-gray-600">
+                          <div>
+                            {application.research_years ? `${application.research_years} years` : '—'}
+                          </div>
+                          <div className="mt-0.5 text-xs text-gray-500">
+                            {application.highest_education || '—'}
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-[260px] align-top text-xs text-gray-600">
+                          {application.education && application.education.length > 0 ? (
+                            <div className="space-y-1.5">
+                              {application.education.map((entry, index) => (
+                                <div key={`${application.id}-edu-${index}`}>
+                                  <div className="font-medium text-gray-800">{entry.school}</div>
+                                  <div>
+                                    {entry.degree} · {entry.discipline}
+                                  </div>
+                                  <div className="text-gray-500">
+                                    {entry.start_date} – {entry.end_date}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            '—'
+                          )}
+                        </TableCell>
+                        <TableCell className="align-top text-xs text-gray-600">
+                          <div>Authorized: {application.work_authorized || '—'}</div>
+                          <div>Sponsorship: {application.sponsorship_required || '—'}</div>
+                          {application.visa_details && (
+                            <div className="mt-0.5 text-gray-500">{application.visa_details}</div>
+                          )}
+                        </TableCell>
+                        <TableCell className="align-top text-sm text-gray-600">
+                          {application.referral_source || '—'}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap align-top text-sm text-gray-600">
+                          {fmtDate(application.created_at)}
+                        </TableCell>
+                        <TableCell className="align-top">
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${applicationStatusClass(application.status)}`}
                           >
-                            View
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => void downloadResume(application)}
-                            className="gap-1"
-                          >
-                            <Download className="size-3.5" /> Resume
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => void removeApplication(application)}
-                            aria-label={`Delete application from ${application.full_name}`}
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                            {application.status}
+                          </span>
+                        </TableCell>
+                        <TableCell className="align-top">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openApplication(application)}
+                            >
+                              View
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => void downloadResume(application)}
+                              className="gap-1"
+                            >
+                              <Download className="size-3.5" /> Resume
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => void removeApplication(application)}
+                              aria-label={`Delete application from ${application.full_name}`}
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
               </TableBody>
             </Table>
           </div>
@@ -784,49 +1013,96 @@ export default function AdminJobs() {
             </SheetHeader>
 
             <div className="grid gap-5 px-4 pb-6">
-              <div className="grid gap-3 rounded-md border bg-gray-50 p-4 text-sm">
-                <div className="flex justify-between gap-4">
-                  <span className="text-gray-500">Email</span>
-                  <a href={`mailto:${viewingApp.email}`} className="font-medium text-[#003d7b] hover:underline">
+              <section className="grid gap-3 rounded-md border bg-gray-50 p-4 text-sm">
+                <DetailRow label="Email">
+                  <a href={`mailto:${viewingApp.email}`} className="text-[#003d7b] hover:underline">
                     {viewingApp.email}
                   </a>
-                </div>
-                {viewingApp.phone && (
-                  <div className="flex justify-between gap-4">
-                    <span className="text-gray-500">Phone</span>
-                    <span className="font-medium">{viewingApp.phone}</span>
-                  </div>
-                )}
+                </DetailRow>
+                <DetailRow label="Phone">{viewingApp.phone || '—'}</DetailRow>
+                <DetailRow label="Country">{viewingApp.country || '—'}</DetailRow>
+                <DetailRow label="Current country">{viewingApp.current_country || '—'}</DetailRow>
                 {linkedinHref && (
-                  <div className="flex justify-between gap-4">
-                    <span className="text-gray-500">LinkedIn</span>
+                  <DetailRow label="LinkedIn">
                     <a
                       href={linkedinHref}
                       target="_blank"
                       rel="noreferrer"
-                      className="max-w-[60%] truncate font-medium text-[#003d7b] hover:underline"
+                      className="text-[#003d7b] hover:underline"
                     >
-                      {linkedinHref}
+                      Profile
                     </a>
-                  </div>
+                  </DetailRow>
                 )}
                 {portfolioHref && (
-                  <div className="flex justify-between gap-4">
-                    <span className="text-gray-500">Portfolio</span>
+                  <DetailRow label="Portfolio">
                     <a
                       href={portfolioHref}
                       target="_blank"
                       rel="noreferrer"
-                      className="max-w-[60%] truncate font-medium text-[#003d7b] hover:underline"
+                      className="text-[#003d7b] hover:underline"
                     >
-                      {portfolioHref}
+                      Website
                     </a>
-                  </div>
+                  </DetailRow>
                 )}
-              </div>
+                {viewingApp.pronouns && (
+                  <DetailRow label="Pronouns">{viewingApp.pronouns}</DetailRow>
+                )}
+              </section>
+
+              <section className="grid gap-3">
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Professional details
+                </h4>
+                <div className="grid gap-3 rounded-md border p-4 text-sm">
+                  <DetailRow label="Current employer">
+                    {viewingApp.current_employer || '—'}
+                  </DetailRow>
+                  <DetailRow label="Research experience">
+                    {viewingApp.research_years ? `${viewingApp.research_years} years` : '—'}
+                  </DetailRow>
+                  <DetailRow label="Highest education">
+                    {viewingApp.highest_education || '—'}
+                  </DetailRow>
+                  <DetailRow label="Work authorization">
+                    {viewingApp.work_authorized || '—'}
+                  </DetailRow>
+                  <DetailRow label="Sponsorship">
+                    {viewingApp.sponsorship_required || '—'}
+                  </DetailRow>
+                  {viewingApp.visa_details && (
+                    <DetailRow label="Visa details">{viewingApp.visa_details}</DetailRow>
+                  )}
+                  <DetailRow label="Heard about SoAI">
+                    {viewingApp.referral_source || '—'}
+                  </DetailRow>
+                </div>
+              </section>
+
+              <section className="grid gap-2">
+                <Label>Education</Label>
+                {viewingApp.education && viewingApp.education.length > 0 ? (
+                  <div className="space-y-3">
+                    {viewingApp.education.map((entry, index) => (
+                      <div key={index} className="rounded-md border p-3 text-sm">
+                        <div className="font-medium text-gray-900">{entry.school}</div>
+                        <div className="text-gray-600">
+                          {entry.degree} · {entry.discipline}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {entry.start_date} – {entry.end_date}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No education entries.</p>
+                )}
+              </section>
 
               <div className="grid gap-2">
-                <Label>Resume</Label>
+                <Label>Resume/CV</Label>
                 <div className="flex items-center justify-between gap-3 rounded-md border p-3 text-sm">
                   <div className="min-w-0">
                     <p className="truncate font-medium text-gray-900">{viewingApp.resume_filename}</p>
@@ -851,6 +1127,16 @@ export default function AdminJobs() {
                   </div>
                 </div>
               )}
+
+              <div className="rounded-md border bg-gray-50 p-3 text-xs leading-relaxed text-gray-600">
+                Privacy Policy accepted:{' '}
+                <strong className="text-gray-900">
+                  {viewingApp.privacy_consent ? 'Yes' : 'No'}
+                </strong>
+                {viewingApp.consent_at && (
+                  <div className="mt-0.5">Consent recorded: {fmtDate(viewingApp.consent_at)}</div>
+                )}
+              </div>
 
               <div className="grid gap-2">
                 <Label htmlFor="app-status">Status</Label>

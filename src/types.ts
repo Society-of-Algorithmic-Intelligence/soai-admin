@@ -166,6 +166,14 @@ export interface JobInput {
 
 export type JobApplicationStatus = 'NEW' | 'REVIEWED' | 'SHORTLISTED' | 'REJECTED';
 
+export interface JobApplicationEducation {
+  school: string;
+  degree: string;
+  discipline: string;
+  start_date: string;
+  end_date: string;
+}
+
 export interface JobApplication {
   id: string;
   job_id: string;
@@ -173,16 +181,31 @@ export interface JobApplication {
   first_name: string;
   last_name: string;
   full_name: string;
+  preferred_first_name?: string | null;
+  preferred_full_name?: string | null;
   email: string;
   phone?: string | null;
+  country?: string | null;
   linkedin_url?: string | null;
   portfolio_url?: string | null;
   cover_letter?: string | null;
+  current_employer?: string | null;
+  research_years?: string | null;
+  highest_education?: string | null;
+  current_country?: string | null;
+  work_authorized?: string | null;
+  sponsorship_required?: string | null;
+  visa_details?: string | null;
+  pronouns?: string | null;
+  referral_source?: string | null;
+  privacy_consent?: number | boolean | null;
+  consent_at?: string | null;
   resume_filename: string;
   resume_content_type: string;
   resume_size: number;
   status: JobApplicationStatus;
   notes?: string | null;
+  education?: JobApplicationEducation[];
   created_at: string;
   updated_at: string;
 }
