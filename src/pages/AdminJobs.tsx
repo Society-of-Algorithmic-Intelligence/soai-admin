@@ -47,6 +47,8 @@ const EMPTY_FORM: JobForm = {
   responsibilities: '',
   requirements: '',
   salary_range: '',
+  apply_email: '',
+  apply_url: '',
   status: 'DRAFT',
 };
 
@@ -60,6 +62,8 @@ type JobForm = {
   responsibilities: string;
   requirements: string;
   salary_range: string;
+  apply_email: string;
+  apply_url: string;
   status: JobStatus;
 };
 
@@ -195,6 +199,8 @@ export default function AdminJobs() {
       responsibilities: job.responsibilities || '',
       requirements: job.requirements || '',
       salary_range: job.salary_range || '',
+      apply_email: job.apply_email || '',
+      apply_url: job.apply_url || '',
       status: job.status,
     });
     setJobFormError(null);
@@ -218,6 +224,8 @@ export default function AdminJobs() {
       responsibilities: jobForm.responsibilities.trim() || undefined,
       requirements: jobForm.requirements.trim() || undefined,
       salary_range: jobForm.salary_range.trim() || undefined,
+      apply_email: jobForm.apply_email.trim() || undefined,
+      apply_url: jobForm.apply_url.trim() || undefined,
       status: jobForm.status,
     };
 
@@ -661,6 +669,37 @@ export default function AdminJobs() {
                   placeholder="e.g. Competitive / SGD 90k–120k"
                 />
               </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="job-apply-email">Application email (optional)</Label>
+                  <Input
+                    id="job-apply-email"
+                    type="email"
+                    value={jobForm.apply_email}
+                    onChange={(event) =>
+                      setJobForm((prev) => ({ ...prev, apply_email: event.target.value }))
+                    }
+                    placeholder="hiring@example.com"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="job-apply-url">External application URL (optional)</Label>
+                  <Input
+                    id="job-apply-url"
+                    type="url"
+                    value={jobForm.apply_url}
+                    onChange={(event) =>
+                      setJobForm((prev) => ({ ...prev, apply_url: event.target.value }))
+                    }
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+              <p className="-mt-2 text-xs text-gray-500">
+                If an application email or URL is set, the public page shows that method instead of
+                the built-in application form.
+              </p>
 
               <div className="grid gap-1.5">
                 <Label htmlFor="job-summary">Short summary</Label>

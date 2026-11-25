@@ -141,6 +141,8 @@ export interface JobPosting {
   responsibilities?: string | null;
   requirements?: string | null;
   salary_range?: string | null;
+  apply_email?: string | null;
+  apply_url?: string | null;
   status: JobStatus;
   application_count?: number;
   created_at: string;
@@ -157,6 +159,8 @@ export interface JobInput {
   responsibilities?: string;
   requirements?: string;
   salary_range?: string;
+  apply_email?: string;
+  apply_url?: string;
   status?: JobStatus;
 }
 
