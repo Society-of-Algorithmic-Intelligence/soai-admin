@@ -6,6 +6,10 @@ import type {
   EventRegistrationParticipant,
   HackathonRegistration,
   HotelBooking,
+  JobPosting,
+  JobInput,
+  JobApplication,
+  JobApplicationStatus,
 } from '../types';
 
 const DEFAULT_API_BASE = import.meta.env.VITE_API_BASE || '';
@@ -195,4 +199,84 @@ export async function syncHotelBookingsToExternalSheet(): Promise<{
     status?: number;
     message?: string;
   }>('/api/admin/hotel-bookings/sync', { method: 'POST' });
+}
+
+export async function fetchAdminJobs(): Promise<{ items: JobPosting[] }> {
+  return await http<{ items: JobPosting[] }>('/api/admin/jobs');
+}
+
+export async function createAdminJob(payload: JobInput): Promise<{ ok: boolean; id: string }> {
+  return await http<{ ok: boolean; id: string }>('/api/admin/jobs', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateAdminJob(
+  id: string,
+  fields: Partial<JobInput>,
+): Promise<{ ok: boolean }> {
+  return await http<{ ok: boolean }>('/api/admin/jobs', {
+    method: 'PATCH',
+    body: JSON.stringify({ id, ...fields }),
+  });
+}
+
+export async function deleteAdminJob(id: string): Promise<{ ok: boolean }> {
+  return await http<{ ok: boolean }>(`/api/admin/jobs?id=${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function fetchAdminJobApplications(jobId?: string): Promise<{ items: JobApplication[] }> {
+  const qs = jobId ? `?${new URLSearchParams({ job_id: jobId }).toString()}` : '';
+  return await http<{ items: JobApplication[] }>(`/api/admin/job-applications${qs}`);
+}
+
+export async function updateAdminJobApplication(
+  id: string,
+  fields: { status?: JobApplicationStatus; notes?: string },
+): Promise<{ ok: boolean }> {
+  return await http<{ ok: boolean }>('/api/admin/job-applications', {
+    method: 'PATCH',
+    body: JSON.stringify({ id, ...fields }),
+  });
+}
+
+export async function deleteAdminJobApplication(id: string): Promise<{ ok: boolean }> {
+  return await http<{ ok: boolean }>(
+    `/api/admin/job-applications?id=${encodeURIComponent(id)}`,
+    { method: 'DELETE' },
+  );
+}
+
+export async function downloadAdminJobResume(id: string, filename: string): Promise<void> {
+  const auth = getAuthToken();
+  const res = await fetch(
+    `${DEFAULT_API_BASE}/api/admin/job-applications/resume?id=${encodeURIComponent(id)}`,
+    { headers: auth ? { Authorization: `Bearer ${auth}` } : {} },
+  );
+  if (!res.ok) {
+    if (res.status === 401) {
+      setAuthToken(null);
+      try {
+        const base = import.meta.env.BASE_URL || '/';
+        window.location.assign(base.replace(/\/$/, '') + '/login');
+      } catch {
+        // The thrown error below still surfaces if navigation is unavailable.
+      }
+    }
+    const text = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status} ${res.statusText}${text ? `: ${text}` : ''}`);
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename || 'resume';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
 }

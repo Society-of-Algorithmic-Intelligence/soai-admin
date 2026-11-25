@@ -1,6 +1,6 @@
-import { Fragment, useEffect } from 'react'
+import { Fragment, useEffect, type CSSProperties } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Users, Newspaper, CalendarDays, LogOut } from 'lucide-react'
+import { Users, Newspaper, CalendarDays, Briefcase, LogOut, type LucideIcon } from 'lucide-react'
 import {
   SidebarProvider,
   Sidebar,
@@ -26,7 +26,7 @@ import {
 import { Separator } from '../../components/ui/separator'
 import { cn } from '../../lib/utils'
 
-function NavItem({ to, icon: Icon, label, end = false }: { to: string; icon: any; label: string; end?: boolean }) {
+function NavItem({ to, icon: Icon, label, end = false }: { to: string; icon: LucideIcon; label: string; end?: boolean }) {
   const location = useLocation();
   const active = end ? location.pathname === to : location.pathname === to || location.pathname.startsWith(to + '/');
   return (
@@ -61,12 +61,12 @@ export default function AdminLayout() {
   }, [navigate]);
 
   function handleLogout() {
-    try { localStorage.removeItem('soai_admin_token'); } catch {}
+    try { localStorage.removeItem('soai_admin_token'); } catch { /* storage may be unavailable */ }
     navigate('/login', { replace: true });
   }
 
   return (
-    <SidebarProvider style={{ '--sidebar-width': '13rem' } as any}>
+    <SidebarProvider style={{ '--sidebar-width': '13rem' } as unknown as CSSProperties}>
       <Sidebar collapsible="offcanvas">
 
         {/* Sidebar header — logo + label */}
@@ -90,6 +90,7 @@ export default function AdminLayout() {
             <SidebarGroupContent>
               <SidebarMenu>
                 <NavItem to="/members" icon={Users} label="Members" />
+                <NavItem to="/jobs"    icon={Briefcase} label="Jobs" />
                 <NavItem to="/news"    icon={Newspaper} label="News" />
                 <NavItem to="/events"  icon={CalendarDays} label="Events" />
               </SidebarMenu>
@@ -138,6 +139,7 @@ function Crumbs() {
   const titleFor = (seg: string) => {
     switch (seg) {
       case 'members': return 'Members';
+      case 'jobs':    return 'Jobs';
       case 'news':    return 'News';
       case 'events':  return 'Events';
       default:        return seg.charAt(0).toUpperCase() + seg.slice(1);

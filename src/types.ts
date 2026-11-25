@@ -128,3 +128,58 @@ export interface HackathonRegistration {
   updated_at: string;
 }
 
+export type JobStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED';
+
+export interface JobPosting {
+  id: string;
+  title: string;
+  department?: string | null;
+  location?: string | null;
+  employment_type?: string | null;
+  summary?: string | null;
+  description?: string | null;
+  responsibilities?: string | null;
+  requirements?: string | null;
+  salary_range?: string | null;
+  status: JobStatus;
+  application_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JobInput {
+  title: string;
+  department?: string;
+  location?: string;
+  employment_type?: string;
+  summary?: string;
+  description?: string;
+  responsibilities?: string;
+  requirements?: string;
+  salary_range?: string;
+  status?: JobStatus;
+}
+
+export type JobApplicationStatus = 'NEW' | 'REVIEWED' | 'SHORTLISTED' | 'REJECTED';
+
+export interface JobApplication {
+  id: string;
+  job_id: string;
+  job_title: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  email: string;
+  phone?: string | null;
+  linkedin_url?: string | null;
+  portfolio_url?: string | null;
+  cover_letter?: string | null;
+  resume_filename: string;
+  resume_content_type: string;
+  resume_size: number;
+  status: JobApplicationStatus;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
