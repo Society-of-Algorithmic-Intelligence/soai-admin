@@ -688,7 +688,7 @@ export default function AdminJobs() {
                     const linkedin = safeHttpUrl(application.linkedin_url);
                     return (
                       <TableRow key={application.id} className="align-top transition-colors hover:bg-slate-50">
-                        <TableCell className="align-top">
+                        <TableCell className="whitespace-normal align-top">
                           <div className="font-medium text-gray-900">
                             {application.full_name ||
                               `${application.first_name} ${application.last_name}`}
@@ -704,7 +704,7 @@ export default function AdminJobs() {
                             </div>
                           )}
                         </TableCell>
-                        <TableCell className="align-top text-sm text-gray-600">
+                        <TableCell className="whitespace-normal align-top text-sm text-gray-600">
                           <a href={`mailto:${application.email}`} className="break-words hover:underline">
                             {application.email}
                           </a>
@@ -720,7 +720,7 @@ export default function AdminJobs() {
                             </a>
                           )}
                         </TableCell>
-                        <TableCell className="align-top text-sm text-gray-600">
+                        <TableCell className="whitespace-normal align-top text-sm text-gray-600">
                           <div>{application.current_country || '—'}</div>
                           {application.country && (
                             <div className="mt-0.5 text-xs text-gray-500">
@@ -728,10 +728,10 @@ export default function AdminJobs() {
                             </div>
                           )}
                         </TableCell>
-                        <TableCell className="max-w-[220px] break-words align-top text-sm text-gray-600">
+                        <TableCell className="max-w-[220px] whitespace-normal break-words align-top text-sm text-gray-600">
                           {application.current_employer || '—'}
                         </TableCell>
-                        <TableCell className="align-top text-sm text-gray-600">
+                        <TableCell className="whitespace-normal align-top text-sm text-gray-600">
                           <div>
                             {application.research_years ? `${application.research_years} years` : '—'}
                           </div>
@@ -739,7 +739,7 @@ export default function AdminJobs() {
                             {application.highest_education || '—'}
                           </div>
                         </TableCell>
-                        <TableCell className="max-w-[280px] break-words align-top text-xs text-gray-600">
+                        <TableCell className="max-w-[280px] whitespace-normal break-words align-top text-xs text-gray-600">
                           {application.education && application.education.length > 0 ? (
                             <div className="space-y-1.5">
                               {application.education.map((entry, index) => (
@@ -758,27 +758,27 @@ export default function AdminJobs() {
                             '—'
                           )}
                         </TableCell>
-                        <TableCell className="align-top text-xs text-gray-600">
+                        <TableCell className="whitespace-normal align-top text-xs text-gray-600">
                           <div>Authorized: {application.work_authorized || '—'}</div>
                           <div>Sponsorship: {application.sponsorship_required || '—'}</div>
                           {application.visa_details && (
                             <div className="mt-0.5 text-gray-500">{application.visa_details}</div>
                           )}
                         </TableCell>
-                        <TableCell className="align-top text-sm text-gray-600">
+                        <TableCell className="whitespace-normal align-top text-sm text-gray-600">
                           {application.referral_source || '—'}
                         </TableCell>
                         <TableCell className="whitespace-nowrap align-top text-sm text-gray-600">
                           {fmtDate(application.created_at)}
                         </TableCell>
-                        <TableCell className="align-top">
+                        <TableCell className="whitespace-normal align-top">
                           <span
                             className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${applicationStatusClass(application.status)}`}
                           >
                             {application.status}
                           </span>
                         </TableCell>
-                        <TableCell className="align-top">
+                        <TableCell className="whitespace-normal align-top">
                           <div className="flex items-center justify-end gap-1.5">
                             <Button
                               variant="outline"
