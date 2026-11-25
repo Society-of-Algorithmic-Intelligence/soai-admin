@@ -412,7 +412,7 @@ export default function AdminJobs() {
   }
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl">
+    <div className="w-full p-6 md:p-8">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Jobs</h1>
@@ -691,7 +691,7 @@ export default function AdminJobs() {
                           )}
                         </TableCell>
                         <TableCell className="align-top text-sm text-gray-600">
-                          <a href={`mailto:${application.email}`} className="hover:underline">
+                          <a href={`mailto:${application.email}`} className="break-words hover:underline">
                             {application.email}
                           </a>
                           <div className="mt-0.5 text-xs text-gray-500">{application.phone || '—'}</div>
@@ -714,7 +714,7 @@ export default function AdminJobs() {
                             </div>
                           )}
                         </TableCell>
-                        <TableCell className="max-w-[180px] align-top text-sm text-gray-600">
+                        <TableCell className="max-w-[220px] break-words align-top text-sm text-gray-600">
                           {application.current_employer || '—'}
                         </TableCell>
                         <TableCell className="align-top text-sm text-gray-600">
@@ -725,7 +725,7 @@ export default function AdminJobs() {
                             {application.highest_education || '—'}
                           </div>
                         </TableCell>
-                        <TableCell className="max-w-[260px] align-top text-xs text-gray-600">
+                        <TableCell className="max-w-[280px] break-words align-top text-xs text-gray-600">
                           {application.education && application.education.length > 0 ? (
                             <div className="space-y-1.5">
                               {application.education.map((entry, index) => (
